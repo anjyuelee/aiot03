@@ -39,5 +39,5 @@ export function gradientCss(stops: Stops): string {
   return `linear-gradient(90deg, ${stops.map(([v, c]) => `${toCss(parseHex(c))} ${(((v - lo) / (hi - lo)) * 100).toFixed(1)}%`).join(', ')})`
 }
 
-export const fillColorExpr = (stops: Stops): unknown[] =>
-  ['interpolate', ['linear'], ['get', 'value'], ...stops.flatMap(([v, c]) => [v, toCss(parseHex(c))])]
+export const fillColorExpr = (stops: Stops, input: unknown[]): unknown[] =>
+  ['interpolate', ['linear'], input, ...stops.flatMap(([v, c]) => [v, toCss(parseHex(c))])]

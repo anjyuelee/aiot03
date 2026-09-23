@@ -39,7 +39,7 @@ describe('colorScale', () => {
     expect(colorAt(stops, 5)).toEqual([128, 0, 0, 192])
   })
   it('builds a maplibre interpolate expression', () => {
-    expect(fillColorExpr(stops)).toEqual(['interpolate', ['linear'], ['get', 'value'], 0, 'rgba(0,0,0,1)', 10, 'rgba(255,0,0,0.502)'])
+    expect(fillColorExpr(stops, ['get', 'value'])).toEqual(['interpolate', ['linear'], ['get', 'value'], 0, 'rgba(0,0,0,1)', 10, 'rgba(255,0,0,0.502)'])
   })
 })
 
