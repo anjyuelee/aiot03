@@ -1,4 +1,4 @@
-import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteTiles } from '../api'
+import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds } from '../api'
 import { useStore } from '../store'
 import { fmtClock } from '../lib/format'
 
@@ -11,7 +11,7 @@ export default function StatusBadge() {
   const radar = useOverlay(isRadar ? 'radar' : null)
   const image = useReprojected(isRadar ? radar.data?.data ?? null : null)
   const satellite = useSatellite(isSatellite)
-  const clouds = useSatelliteTiles(isSatellite ? satellite.data?.data ?? null : null)
+  const clouds = useSatelliteClouds(isSatellite ? satellite.data?.data ?? null : null)
   const times = useFutureTimes()
   const grid = useForecastGrid(t > 0 ? times[t - 1] ?? null : null)
 

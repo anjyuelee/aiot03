@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
-import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteTiles } from '../api'
+import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds } from '../api'
 import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
 import { SCALES } from '../lib/colorScale'
 import { renderHeat } from '../lib/heat'
 import type { CanvasOverlay } from '../lib/reproject'
-import { ImageOverlay, useImageOverlay } from '../map/useImageOverlay'
+import { useImageOverlay } from '../map/useImageOverlay'
 import { useChoropleth } from '../map/useChoropleth'
 import WindParticles from './WindParticles'
 
@@ -21,7 +21,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
   const radar = useOverlay(layer === 'radar' ? 'radar' : null)
   const image = useReprojected(layer === 'radar' ? radar.data?.data ?? null : null)
   const satellite = useSatellite(layer === 'satellite')
-  const clouds = useSatelliteTiles(layer === 'satellite' ? satellite.data?.data ?? null : null)
+  const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null)
 
   // 熱圖只依欄位與觀測資料而定，時間軸來回切換時重用
   const heatCache = useMemo(() => new Map<string, CanvasOverlay>(), [obs.data])
@@ -41,13 +41,8 @@ export default function DataLayers({ map }: { map: MlMap }) {
 
   useImageOverlay(map, 'heat', heat, 0.7)
   useImageOverlay(map, 'image', image.data ?? null, 0.9)
+  // 雲的透明度已在像素裡，整體不透明度可以調高
+  useImageOverlay(map, 'satellite', layer === 'satellite' ? clouds.data ?? null : null, 0.9)
   useChoropleth(map, choropleth, future && def.future ? SCALES[def.future.scale].stops : null)
-  const tiles = layer === 'satellite' ? clouds.data ?? [] : []
-  return (
-    <>
-      {/* 雲的透明度已在像素裡，整體不透明度可以調高 */}
-      {tiles.map((src, i) => <ImageOverlay key={i} map={map} id={`sat-${i}`} src={src} opacity={0.9} />)}
-      {layer === 'wind' && t === 0 && obs.data && <WindParticles map={map} obs={obs.data.data} />}
-    </>
-  )
+  return layer === 'wind' && !future && obs.data ? <WindParticles map={map} obs={obs.data.data} /> : null
 }
