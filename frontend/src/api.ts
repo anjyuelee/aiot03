@@ -7,6 +7,8 @@ import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOve
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
 
 const TEN_MIN = 10 * 60_000
+// 重投影後的 canvas 佔記憶體，切走圖層後不久即釋放
+const CANVAS_GC = 60_000
 
 async function get<T>(path: string): Promise<ApiResponse<T>> {
   const res = await fetch(path)
@@ -21,13 +23,15 @@ export const useTowns = () =>
   useQuery({ queryKey: ['towns'], queryFn: () => get<Town[]>('/api/towns'), staleTime: Infinity })
 
 export const useTownForecast = (town: string | null) =>
-  useQuery({ queryKey: ['forecast', town], queryFn: () => get<TownForecast>(`/api/forecast?town=${town}`), enabled: !!town })
+  useQuery({ queryKey: ['forecast', town], queryFn: () => get<TownForecast>(`/api/forecast?town=${encodeURIComponent(town!)}`), enabled: !!town })
 
 export const useForecastGrid = (time: string | null) =>
   useQuery({
     queryKey: ['grid', time],
     queryFn: () => get<ForecastGrid>(`/api/forecast-grid${time ? `?time=${encodeURIComponent(time)}` : ''}`),
     placeholderData: keepPreviousData,
+    // 時段清單定期刷新，已結束的時段才會從時間軸移除
+    refetchInterval: time ? false : TEN_MIN,
   })
 
 /** 尚未結束的 3 小時時段，最多 24 格（72 小時） */
@@ -48,6 +52,7 @@ export const useReprojected = (o: ImageOverlay | null) =>
     queryFn: () => radarOverlay(o!),
     enabled: !!o,
     staleTime: Infinity,
+    gcTime: CANVAS_GC,
   })
 
 export const useSatellite = (enabled: boolean) =>
@@ -59,6 +64,7 @@ export const useSatelliteClouds = (s: SatelliteOverlay | null) =>
     queryFn: () => satelliteOverlay(s!),
     enabled: !!s,
     staleTime: Infinity,
+    gcTime: CANVAS_GC,
   })
 
 export type TownShapes = FeatureCollection<Geometry, { TOWNCODE: string }>

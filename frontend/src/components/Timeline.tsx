@@ -30,6 +30,7 @@ export default function Timeline() {
   }, [t, max, times.length, setT])
 
   const scale = t > 0 ? def.future?.scale : def.now?.scale
+  const label = t === 0 ? '現在' : times[t - 1] ? fmtSlot(times[t - 1]) : ''
   return (
     <div className="timeline glass">
       <div className="timeline-row">
@@ -37,8 +38,8 @@ export default function Timeline() {
           {playing ? '❚❚' : '▶'}
         </button>
         <input type="range" min={0} max={max} value={Math.min(t, max)} disabled={max === 0}
-          onChange={e => setT(Number(e.target.value))} aria-label="預報時間" />
-        <span className="time-label">{t === 0 ? '現在' : times[t - 1] ? fmtSlot(times[t - 1]) : ''}</span>
+          onChange={e => setT(Number(e.target.value))} aria-label="預報時間" aria-valuetext={label} />
+        <span className="time-label">{label}</span>
       </div>
       {scale && <Legend scale={scale} />}
     </div>

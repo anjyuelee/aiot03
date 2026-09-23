@@ -29,7 +29,18 @@ export default function WindParticles({ map, obs }: { map: MlMap; obs: Observati
     }
     resize()
 
-    const [w, s, e, n] = TAIWAN_BOUNDS
+    // 只在畫面內的風場範圍產生粒子，放大時密度才不會被稀釋
+    let [w, s, e, n] = TAIWAN_BOUNDS
+    const fitView = () => {
+      const v = map.getBounds()
+      const [fw, fs, fe, fn] = TAIWAN_BOUNDS
+      w = Math.max(fw, v.getWest())
+      s = Math.max(fs, v.getSouth())
+      e = Math.min(fe, v.getEast())
+      n = Math.min(fn, v.getNorth())
+      if (w >= e || s >= n) [w, s, e, n] = TAIWAN_BOUNDS
+    }
+    fitView()
     const spawn = (p: Particle) => {
       p.lon = w + Math.random() * (e - w)
       p.lat = s + Math.random() * (n - s)
@@ -68,10 +79,12 @@ export default function WindParticles({ map, obs }: { map: MlMap; obs: Observati
     }
     raf = requestAnimationFrame(frame)
     map.on('move', clear)
+    map.on('moveend', fitView)
     map.on('resize', resize)
     return () => {
       cancelAnimationFrame(raf)
       map.off('move', clear)
+      map.off('moveend', fitView)
       map.off('resize', resize)
     }
   }, [map, field])

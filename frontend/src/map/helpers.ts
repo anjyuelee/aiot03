@@ -1,7 +1,7 @@
 import type { Map as MlMap } from 'maplibre-gl'
 
 /** 資料圖層放在第一個文字圖層之下，地名標籤才不會被蓋住 */
-export const firstSymbolLayer = (map: MlMap) => map.getStyle().layers.find(l => l.type === 'symbol')?.id
+export const firstSymbolLayer = (map: MlMap) => map.getLayersOrder().find(id => map.getLayer(id)?.type === 'symbol')
 
 export function removeLayerAndSource(map: MlMap, id: string) {
   try {

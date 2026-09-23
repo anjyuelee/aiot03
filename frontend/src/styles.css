@@ -36,7 +36,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 .muted { color: var(--muted); }
 
 /* 左上：搜尋 + 狀態 */
-.top-left { position: fixed; top: var(--gap); left: var(--gap); width: 320px; z-index: 3; display: flex; flex-direction: column; gap: 8px; }
+.top-left { position: fixed; top: var(--gap); left: var(--gap); width: 320px; z-index: 5; display: flex; flex-direction: column; gap: 8px; }
 .search-row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
 .search-row input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text); font: inherit; }
 .results { list-style: none; margin: 0; padding: 4px; border-top: 1px solid var(--glass-border); max-height: 320px; overflow: auto; }
@@ -77,6 +77,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
 .maplibregl-ctrl-attrib { background: rgba(0, 0, 0, 0.4) !important; }
+/* 放在時間軸（含圖例約 78px）上方，避免被遮住 */
+.maplibregl-ctrl-bottom-right { bottom: calc(var(--gap) + 80px + env(safe-area-inset-bottom)); }
 
 /* 手機 */
 @media (max-width: 640px) {
