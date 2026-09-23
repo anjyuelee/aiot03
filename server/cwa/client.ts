@@ -1,0 +1,34 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- CWA JSON is external */
+export interface Fetcher {
+  dataset(id: string, params?: Record<string, string>): Promise<any>
+  file(id: string): Promise<any>
+}
+
+const BASE = 'https://opendata.cwa.gov.tw'
+const TIMEOUT_MS = 8000
+
+function apiKey(): string {
+  const key = process.env.CWA_API_KEY
+  if (!key) throw new Error('CWA_API_KEY is not set')
+  return key
+}
+
+async function getJson(url: string): Promise<any> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+  if (!res.ok) throw new Error(`CWA HTTP ${res.status} ${url.replace(/Authorization=[^&]+/, 'Authorization=***')}`)
+  return res.json()
+}
+
+export const cwa: Fetcher = {
+  async dataset(id, params = {}) {
+    const q = new URLSearchParams({ Authorization: apiKey(), ...params })
+    const json = await getJson(`${BASE}/api/v1/rest/datastore/${id}?${q}`)
+    if (json.success !== 'true') throw new Error(`CWA ${id} returned success=${json.success}`)
+    return json
+  },
+  // fileapi 會 302 轉址到 S3，fetch 預設會跟隨
+  file(id) {
+    const q = new URLSearchParams({ Authorization: apiKey(), format: 'JSON' })
+    return getJson(`${BASE}/fileapi/v1/opendataapi/${id}?${q}`)
+  },
+}
