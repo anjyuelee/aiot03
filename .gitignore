@@ -6,3 +6,5 @@ dist/
 .superpowers/
 *.db-journal
 data/*.db
+.vercel
+.env*
