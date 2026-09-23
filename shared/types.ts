@@ -72,6 +72,11 @@ export interface ImageOverlay {
   bounds: Bounds
 }
 
+export interface SatelliteOverlay {
+  obsTime: string
+  tiles: { url: string; bounds: Bounds }[]
+}
+
 export interface ApiResponse<T> {
   data: T
   updatedAt: string | null

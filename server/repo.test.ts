@@ -4,7 +4,9 @@ import { openDb, type DB } from './db.js'
 import {
   replaceObservations, listObservations, replaceForecasts, listTowns, getTownForecast,
   listGridTimes, getGrid, upsertImage, getImage, logFetch, getFetchedAt,
+  replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile,
 } from './repo.js'
+import type { Bounds } from '../shared/types.js'
 import { parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage } from './cwa/parse.js'
 
 let db: DB
@@ -48,6 +50,21 @@ describe('forecasts', () => {
     expect(times[0]).toBe('2026-09-23T18:00:00+08:00')
     expect(times).toHaveLength(32)
     expect(getGrid(db, times[0])).toContainEqual({ townId: '10002010', temp: 27, pop: 20, humidity: 77, windSpeed: 3 })
+  })
+})
+
+describe('satellite tiles', () => {
+  const bounds: Bounds = [114.48, 24.96, 126.96, 37.44]
+  const tile = (id: string, png: number[]) => ({ id, png: new Uint8Array(png), bounds })
+  it('replaces all tiles and reads them back', () => {
+    replaceSatelliteTiles(db, [tile('2/3/0', [9]), tile('2/0/0', [8])])
+    replaceSatelliteTiles(db, [tile('2/1/2', [1, 2, 3]), tile('2/0/3', [4])])
+    expect(listSatelliteTiles(db)).toEqual([
+      { id: '2/0/3', bounds },
+      { id: '2/1/2', bounds },
+    ])
+    expect(Array.from(getSatelliteTile(db, '2/1/2')!)).toEqual([1, 2, 3])
+    expect(getSatelliteTile(db, '2/3/0')).toBeNull()
   })
 })
 

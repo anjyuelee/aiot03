@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { zipSync } from 'fflate'
 import { fixture } from './__fixtures__/load.js'
+import { sampleKmz } from './__fixtures__/kmz.js'
 import { openDb, type DB } from './db.js'
 import type { Fetcher } from './cwa/client.js'
 import { syncObservations, syncForecast, syncImage } from './sync.js'
-import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt } from './repo.js'
+import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles } from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
 
@@ -23,8 +25,14 @@ function fakeFetcher(calls: string[] = []): Fetcher {
       throw new Error(`unexpected dataset ${id}`)
     },
     async file(id) { return fixture(`${id}.json`) },
+    async bytes(url) {
+      if (url.endsWith('/O-B0033-003.kmz')) return sampleKmz()
+      throw new Error(`unexpected url ${url}`)
+    },
   }
 }
+
+const noBytes = async () => new Uint8Array()
 
 let db: DB
 beforeEach(() => { db = openDb(':memory:') })
@@ -36,7 +44,7 @@ describe('syncObservations', () => {
     expect(getFetchedAt(db, 'observations')).not.toBeNull()
   })
   it('refuses to wipe data with an empty response', async () => {
-    const f: Fetcher = { dataset: async () => empty, file: async () => ({}) }
+    const f: Fetcher = { dataset: async () => empty, file: async () => ({}), bytes: noBytes }
     await expect(syncObservations(db, f)).rejects.toThrow('no observations')
     expect(getFetchedAt(db, 'observations')).toBeNull()
   })
@@ -44,6 +52,7 @@ describe('syncObservations', () => {
     const f: Fetcher = {
       async dataset(id) { return id === 'O-A0002-001' ? fixture('O-A0002-001.json') : empty },
       async file() { return {} },
+      bytes: noBytes,
     }
     await expect(syncObservations(db, f)).rejects.toThrow('no observations')
     expect(getFetchedAt(db, 'observations')).toBeNull()
@@ -71,6 +80,7 @@ describe('syncForecast', () => {
         return ids.startsWith('F-D0047-001,') ? fixture('F-D0047-093-3d.json') : empty
       },
       async file() { return {} },
+      bytes: noBytes,
     }
     await expect(syncForecast(db, f)).rejects.toThrow('no week forecast')
     expect(getFetchedAt(db, 'forecast')).toBeNull()
@@ -82,5 +92,17 @@ describe('syncImage', () => {
     await syncImage(db, 'radar', fakeFetcher())
     expect(getImage(db, 'radar')?.bounds).toEqual([115, 17.75, 126.5, 29.25])
     expect(getFetchedAt(db, 'radar')).not.toBeNull()
+  })
+  it('stores satellite metadata and level-2 tiles from the kmz', async () => {
+    await syncImage(db, 'satellite', fakeFetcher())
+    expect(getImage(db, 'satellite')?.obsTime).toBe('2026-09-23T19:50:00+08:00')
+    expect(listSatelliteTiles(db).map(t => t.id)).toEqual(['2/0/3', '2/1/2'])
+    expect(getFetchedAt(db, 'satellite')).not.toBeNull()
+  })
+  it('refuses to wipe satellite tiles when the kmz has none', async () => {
+    const f = { ...fakeFetcher(), bytes: async () => zipSync({ 'doc.kml': new Uint8Array() }) }
+    await expect(syncImage(db, 'satellite', f)).rejects.toThrow('no satellite tiles')
+    expect(getImage(db, 'satellite')).toBeNull()
+    expect(getFetchedAt(db, 'satellite')).toBeNull()
   })
 })

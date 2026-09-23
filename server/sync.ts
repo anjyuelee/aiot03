@@ -1,8 +1,9 @@
 import type { DB } from './db.js'
 import type { ImageKind } from '../shared/types.js'
 import { cwa, type Fetcher } from './cwa/client.js'
+import { parseSatelliteKmz } from './cwa/kmz.js'
 import { parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseWeatherStations } from './cwa/parse.js'
-import { logFetch, replaceForecasts, replaceObservations, upsertImage } from './repo.js'
+import { logFetch, replaceForecasts, replaceObservations, replaceSatelliteTiles, upsertImage } from './repo.js'
 
 // F-D0047-001 起每 4 號一個縣市：+0 為 3 天預報、+2 為一週預報
 const countyIds = (offset: number) =>
@@ -11,7 +12,7 @@ const countyIds = (offset: number) =>
 // F-D0047-093 每次最多回傳 5 個縣市
 const CHUNK = 5
 
-const IMAGE_IDS: Record<ImageKind, string> = { radar: 'O-A0058-005', satellite: 'O-B0032-002' }
+const IMAGE_IDS: Record<ImageKind, string> = { radar: 'O-A0058-005', satellite: 'O-B0033-003' }
 
 const now = () => new Date().toISOString()
 
@@ -45,6 +46,16 @@ export async function syncForecast(db: DB, f: Fetcher = cwa): Promise<void> {
 }
 
 export async function syncImage(db: DB, kind: ImageKind, f: Fetcher = cwa): Promise<void> {
-  upsertImage(db, parseImage(await f.file(IMAGE_IDS[kind]), kind))
+  const meta = parseImage(await f.file(IMAGE_IDS[kind]), kind)
+  if (kind === 'radar') {
+    upsertImage(db, meta)
+  } else {
+    const tiles = parseSatelliteKmz(await f.bytes(meta.url))
+    if (tiles.length === 0) throw new Error('CWA returned no satellite tiles')
+    db.transaction(() => {
+      upsertImage(db, meta)
+      replaceSatelliteTiles(db, tiles)
+    })()
+  }
   logFetch(db, kind, now())
 }

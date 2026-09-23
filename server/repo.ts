@@ -1,6 +1,7 @@
 import type { DB } from './db.js'
-import type { ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, WeekSlot } from '../shared/types.js'
+import type { Bounds, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, WeekSlot } from '../shared/types.js'
 import type { RainObsRow, Slot3hRow, StationRow, WeatherObsRow, WeekRow } from './cwa/parse.js'
+import type { SatelliteTileRow } from './cwa/kmz.js'
 
 export function replaceObservations(
   db: DB,
@@ -77,6 +78,25 @@ export function getImage(db: DB, kind: ImageKind): ImageOverlay | null {
   const r = db.prepare('SELECT * FROM images WHERE kind = ?').get(kind) as
     { kind: ImageKind; url: string; obs_time: string; west: number; south: number; east: number; north: number } | undefined
   return r ? { kind: r.kind, url: r.url, obsTime: r.obs_time, bounds: [r.west, r.south, r.east, r.north] } : null
+}
+
+export function replaceSatelliteTiles(db: DB, tiles: SatelliteTileRow[]): void {
+  const insert = db.prepare('INSERT INTO satellite_tiles (id, png, west, south, east, north) VALUES (?, ?, ?, ?, ?, ?)')
+  db.transaction(() => {
+    db.prepare('DELETE FROM satellite_tiles').run()
+    for (const t of tiles) insert.run(t.id, t.png, ...t.bounds)
+  })()
+}
+
+export function listSatelliteTiles(db: DB): { id: string; bounds: Bounds }[] {
+  const rows = db.prepare('SELECT id, west, south, east, north FROM satellite_tiles ORDER BY id').all() as
+    { id: string; west: number; south: number; east: number; north: number }[]
+  return rows.map(r => ({ id: r.id, bounds: [r.west, r.south, r.east, r.north] }))
+}
+
+export function getSatelliteTile(db: DB, id: string): Uint8Array | null {
+  const r = db.prepare('SELECT png FROM satellite_tiles WHERE id = ?').get(id) as { png: Uint8Array } | undefined
+  return r?.png ?? null
 }
 
 export function logFetch(db: DB, dataset: string, at: string): void {

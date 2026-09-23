@@ -20,4 +20,11 @@ describe('cwa client', () => {
       expect(String(e)).not.toContain(SECRET)
     }
   })
+
+  it('downloads bytes and throws on non-OK', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array([1, 2, 3]))))
+    expect(Array.from(await cwa.bytes('https://example.com/a.kmz'))).toEqual([1, 2, 3])
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
+    await expect(cwa.bytes('https://example.com/a.kmz')).rejects.toThrow('404')
+  })
 })

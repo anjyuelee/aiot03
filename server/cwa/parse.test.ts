@@ -71,11 +71,11 @@ describe('parseImage', () => {
     })
   })
   it('parses satellite metadata', () => {
-    expect(parseImage(fixture('O-B0032-002.json'), 'satellite')).toEqual({
+    expect(parseImage(fixture('O-B0033-003.json'), 'satellite')).toEqual({
       kind: 'satellite',
-      url: 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-B0032-002.jpg',
-      obsTime: '2026-09-23T19:10:00+08:00',
-      bounds: [102, 0, 155, 50],
+      url: 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-B0033-003.kmz',
+      obsTime: '2026-09-23T19:50:00+08:00',
+      bounds: [102, 0, 152, 50],
     })
   })
 })

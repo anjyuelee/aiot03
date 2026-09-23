@@ -2,10 +2,12 @@
 export interface Fetcher {
   dataset(id: string, params?: Record<string, string>): Promise<any>
   file(id: string): Promise<any>
+  bytes(url: string): Promise<Uint8Array>
 }
 
 const BASE = 'https://opendata.cwa.gov.tw'
 const TIMEOUT_MS = 8000
+const BYTES_TIMEOUT_MS = 20_000
 
 function apiKey(): string {
   const key = process.env.CWA_API_KEY
@@ -30,5 +32,11 @@ export const cwa: Fetcher = {
   file(id) {
     const q = new URLSearchParams({ Authorization: apiKey(), format: 'JSON' })
     return getJson(`${BASE}/fileapi/v1/opendataapi/${id}?${q}`)
+  },
+  // S3 上的公開檔案，不需要授權碼
+  async bytes(url) {
+    const res = await fetch(url, { signal: AbortSignal.timeout(BYTES_TIMEOUT_MS) })
+    if (!res.ok) throw new Error(`CWA HTTP ${res.status} ${url}`)
+    return new Uint8Array(await res.arrayBuffer())
   },
 }

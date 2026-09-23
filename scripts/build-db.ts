@@ -30,5 +30,5 @@ for (const [name, run] of steps) {
 }
 
 const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n
-console.log(Object.fromEntries(['stations', 'observations', 'towns', 'forecast_3h', 'forecast_week', 'images'].map(t => [t, count(t)])))
+console.log(Object.fromEntries(['stations', 'observations', 'towns', 'forecast_3h', 'forecast_week', 'images', 'satellite_tiles'].map(t => [t, count(t)])))
 db.close()
