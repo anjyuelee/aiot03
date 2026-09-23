@@ -43,8 +43,5 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), apiDev()],
     server: { fs: { allow: [repoRoot] } },
     build: { outDir: path.join(repoRoot, 'dist'), emptyOutDir: true },
-    // maplibre-gl 的 web worker 經過 Vite 8 的 esbuild dep 預先打包後會找不到正確的 worker URL，
-    // 開發模式下排除預先打包可避開這個問題
-    optimizeDeps: { exclude: ['maplibre-gl'] },
   }
 })
