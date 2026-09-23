@@ -40,6 +40,14 @@ describe('syncObservations', () => {
     await expect(syncObservations(db, f)).rejects.toThrow('no observations')
     expect(getFetchedAt(db, 'observations')).toBeNull()
   })
+  it('refuses to wipe data when weather stations are empty even if rain has data', async () => {
+    const f: Fetcher = {
+      async dataset(id) { return id === 'O-A0002-001' ? fixture('O-A0002-001.json') : empty },
+      async file() { return {} },
+    }
+    await expect(syncObservations(db, f)).rejects.toThrow('no observations')
+    expect(getFetchedAt(db, 'observations')).toBeNull()
+  })
 })
 
 describe('syncForecast', () => {
@@ -54,6 +62,18 @@ describe('syncForecast', () => {
     expect(listTowns(db)).toHaveLength(2)
     expect(getTownForecast(db, '10002010')!.week).toHaveLength(15)
     expect(getFetchedAt(db, 'forecast')).not.toBeNull()
+  })
+  it('refuses to wipe data when the week forecast yields zero slots', async () => {
+    const f: Fetcher = {
+      async dataset(id, params) {
+        if (id !== 'F-D0047-093') throw new Error(`unexpected dataset ${id}`)
+        const ids = params!.locationId
+        return ids.startsWith('F-D0047-001,') ? fixture('F-D0047-093-3d.json') : empty
+      },
+      async file() { return {} },
+    }
+    await expect(syncForecast(db, f)).rejects.toThrow('no week forecast')
+    expect(getFetchedAt(db, 'forecast')).toBeNull()
   })
 })
 

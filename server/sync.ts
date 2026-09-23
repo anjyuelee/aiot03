@@ -22,7 +22,7 @@ export async function syncObservations(db: DB, f: Fetcher = cwa): Promise<void> 
   const a = parseWeatherStations(auto)
   const b = parseWeatherStations(manned)
   const rain = parseRainStations(rainJson)
-  if (a.obs.length + b.obs.length + rain.obs.length === 0) throw new Error('CWA returned no observations')
+  if (a.obs.length + b.obs.length === 0) throw new Error('CWA returned no observations')
   replaceObservations(db, { stations: [...a.stations, ...b.stations], obs: [...a.obs, ...b.obs] }, rain)
   logFetch(db, 'observations', now())
 }
@@ -37,8 +37,10 @@ async function fetchCounties(f: Fetcher, ids: string[]) {
 export async function syncForecast(db: DB, f: Fetcher = cwa): Promise<void> {
   const [threeDay, week] = await Promise.all([fetchCounties(f, countyIds(0)), fetchCounties(f, countyIds(2))])
   const f3h = parseForecast3h(threeDay)
+  const fWeek = parseForecastWeek(week)
   if (f3h.towns.length === 0) throw new Error('CWA returned no town forecasts')
-  replaceForecasts(db, f3h, parseForecastWeek(week))
+  if (fWeek.slots.length === 0) throw new Error('CWA returned no week forecasts')
+  replaceForecasts(db, f3h, fWeek)
   logFetch(db, 'forecast', now())
 }
 

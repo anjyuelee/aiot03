@@ -37,7 +37,8 @@ let shared: DB | null = null
 export function getDb(): DB {
   if (shared) return shared
   const file = path.join(os.tmpdir(), 'aiot03-weather.db')
-  if (!fs.existsSync(file) && seedExists()) fs.copyFileSync(SEED, file)
+  const stale = seedExists() && (!fs.existsSync(file) || fs.statSync(SEED).mtimeMs > fs.statSync(file).mtimeMs)
+  if (stale) fs.copyFileSync(SEED, file)
   shared = openDb(file)
   return shared
 }

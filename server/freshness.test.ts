@@ -34,4 +34,29 @@ describe('ensureFresh', () => {
     const meta = await ensureFresh(db, 'radar', async () => { throw new Error('boom') }, NOW)
     expect(meta).toEqual({ updatedAt: null, stale: true })
   })
+
+  it('dedupes concurrent syncs for the same key', async () => {
+    logFetch(db, 'satellite', new Date(NOW - TTL.satellite - 1).toISOString())
+    const sync = vi.fn(async () => logFetch(db, 'satellite', new Date(NOW).toISOString()))
+    const [a, b] = await Promise.all([
+      ensureFresh(db, 'satellite', sync, NOW),
+      ensureFresh(db, 'satellite', sync, NOW),
+    ])
+    expect(sync).toHaveBeenCalledOnce()
+    expect(a).toEqual(b)
+  })
+
+  it('backs off from re-syncing for 60s after a failure', async () => {
+    logFetch(db, 'observations', new Date(NOW - TTL.observations - 1).toISOString())
+    const sync = vi.fn(async () => { throw new Error('boom') })
+
+    await ensureFresh(db, 'observations', sync, NOW)
+    expect(sync).toHaveBeenCalledOnce()
+
+    await ensureFresh(db, 'observations', sync, NOW + 30_000)
+    expect(sync).toHaveBeenCalledOnce()
+
+    await ensureFresh(db, 'observations', sync, NOW + 60_001)
+    expect(sync).toHaveBeenCalledTimes(2)
+  })
 })
