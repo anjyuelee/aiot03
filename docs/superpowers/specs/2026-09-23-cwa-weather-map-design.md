@@ -40,89 +40,91 @@ aiot03/
 
 Vercel 檔案系統唯讀、僅 `/tmp` 可寫且不跨 instance 保存，因此：
 
-1. **Build 時**：`scripts/build-db.ts` 以 `CWA_API_KEY` 抓取測站、觀測、鄉鎮預報，寫入 `data/weather.db`，隨部署打包（唯讀開啟）。
-2. **執行時**：API 先查 `/tmp/cache.db`；缺少或過期則向 CWA 抓取並寫回 `/tmp/cache.db`。TTL：觀測 10 分鐘、預報 60 分鐘、雷達/衛星 10 分鐘。
-3. **退路**：CWA 失敗 → `/tmp` 舊快取 → 打包的 `weather.db`，回應標示 `stale: true`。
-4. **更新**：GitHub Actions 每 3 小時呼叫 Vercel Deploy Hook 重建，刷新種子資料。
-
-兩個 DB 使用同一份 schema 與同一個 repository 程式碼。
+1. **Build 時**：`scripts/build-db.ts` 以 `CWA_API_KEY` 抓取全部資料寫入 `data/weather.db`，透過 `vercel.json` 的 `includeFiles` 隨 function 打包。
+2. **冷啟動**：若 `/tmp/aiot03-weather.db` 不存在，將打包的 `data/weather.db` 複製過去，之後都讀寫這一份（單一 DB，種子資料即為退路）。
+3. **執行時**：以 `fetch_log` 判斷是否過期（觀測 10 分鐘、預報 60 分鐘、雷達/衛星 10 分鐘）；過期則向 CWA 抓取並寫回 SQLite。
+4. **退路**：CWA 失敗時沿用 SQLite 內既有資料，回應標示 `stale: true`。
+5. **更新**：GitHub Actions 每 3 小時呼叫 Vercel Deploy Hook 重建，刷新種子資料。
+6. 回應 header `x-seed-db: present|missing` 用來驗證種子 DB 確實有被打包。
 
 ### 3.2 Schema
 
 ```sql
 stations(id TEXT PK, name TEXT, county TEXT, town TEXT, lat REAL, lon REAL)
-observations(station_id TEXT, obs_time TEXT, temp REAL, humidity REAL,
-             wind_speed REAL, wind_dir REAL, rain_1h REAL, rain_24h REAL,
-             PRIMARY KEY(station_id, obs_time))
+observations(station_id TEXT PK, obs_time TEXT, temp REAL, humidity REAL,
+             wind_speed REAL, wind_dir REAL, rain_1h REAL, rain_24h REAL)   -- 只保留每站最新一筆
 towns(id TEXT PK, name TEXT, county TEXT, lat REAL, lon REAL)
-forecasts(town_id TEXT, kind TEXT CHECK(kind IN ('3h','week')), start_time TEXT,
-          temp REAL, pop REAL, wx TEXT, wx_code TEXT, wind_speed REAL, wind_dir TEXT,
-          PRIMARY KEY(town_id, kind, start_time))
-images(kind TEXT PK CHECK(kind IN ('radar','satellite')), url TEXT, obs_time TEXT,
-       west REAL, south REAL, east REAL, north REAL)
+forecast_3h(town_id TEXT, start_time TEXT, temp REAL, pop REAL, humidity REAL,
+            wind_speed REAL, wind_dir TEXT, wx TEXT, wx_code TEXT, PRIMARY KEY(town_id, start_time))
+forecast_week(town_id TEXT, start_time TEXT, end_time TEXT, min_temp REAL, max_temp REAL,
+              pop REAL, wx TEXT, wx_code TEXT, PRIMARY KEY(town_id, start_time))
+images(kind TEXT PK, url TEXT, obs_time TEXT, west REAL, south REAL, east REAL, north REAL)
 fetch_log(dataset TEXT PK, fetched_at TEXT)
 ```
 
-`towns` 中心點經緯度：若 CWA 預報資料內含則採用，否則以內建的鄉鎮中心點靜態 JSON 補齊（build 時寫入）。
+鄉鎮中心點經緯度直接取自 CWA 預報資料（`Latitude`/`Longitude`），`Geocode`（8 碼）即 `towns.id`，與 `taiwan-atlas` 的 `TOWNCODE` 相同。
 
-### 3.3 CWA 資料集（實作第一步須以實際授權碼驗證 ID 與欄位）
+### 3.3 CWA 資料集（已於 2026-09-23 以實際授權碼驗證）
 
-| 用途 | 預計資料集 |
-|---|---|
-| 自動站觀測 | `O-A0001-001`（自動氣象站）＋ `O-A0003-001`（局屬站） |
-| 鄉鎮 72h 預報 | `F-D0047-089` |
-| 鄉鎮一週預報 | `F-D0047-091` |
-| 雷達回波 | `O-A0058-003` |
-| 衛星雲圖 | `O-B0032` 系列（驗證後擇一） |
+| 用途 | 資料集 | 備註 |
+|---|---|---|
+| 自動站觀測 | `O-A0001-001`、`O-A0003-001` | 溫度、濕度、風速、風向；缺值為 `-99` |
+| 雨量站 | `O-A0002-001` | `Past1hr`、`Past24hr` 雨量，約 1340 站 |
+| 鄉鎮 3 天預報 | `F-D0047-093` + `locationId=F-D0047-001,005,…,085` | 每次最多回傳 5 個縣市，需分批；3 小時一格 |
+| 鄉鎮一週預報 | `F-D0047-093` + `locationId=F-D0047-003,007,…,087` | 12 小時一格 |
+| 雷達回波 | `O-A0058-005`（fileapi） | 透明底 PNG，範圍 115–126.5E、17.75–29.25N |
+| 衛星雲圖 | `O-B0032-002`（fileapi） | 紅外線彩色 JPG，範圍 102–155E、0–50N |
 
-若驗證後 ID 或格式不同，以實際 API 為準並更新本表。
+`F-D0047-089/091` 是縣市層級（22 筆），不採用。fileapi 以 302 轉址到 S3，S3 圖片有 `Access-Control-Allow-Origin: *`。
 
 ### 3.4 API
 
-回應格式統一：`{ data, updatedAt, stale }`；錯誤：`{ error }` + HTTP 狀態碼。
+回應格式統一：`{ data, updatedAt, stale }`；錯誤：`{ error }` + HTTP 狀態碼。每個端點是 `api/` 下的單一檔案、使用 Web 標準 `GET(request): Response`。
 
 | 端點 | 說明 |
 |---|---|
 | `GET /api/observations` | 全台最新觀測（含測站座標） |
-| `GET /api/forecast/:townId` | 單一鄉鎮 3h 與一週預報 |
-| `GET /api/forecast-grid?time=ISO` | 指定時段所有鄉鎮預報（時間軸未來時段） |
+| `GET /api/towns` | 所有鄉鎮 id/名稱/縣市/中心點（搜尋與最近鄉鎮都在前端算） |
+| `GET /api/forecast?town=ID` | 單一鄉鎮 3 小時與一週預報 |
+| `GET /api/forecast-grid[?time=ISO]` | `times`（所有 3 小時時段）＋指定時段所有鄉鎮數值 |
 | `GET /api/radar`、`GET /api/satellite` | 最新圖片 URL、時間、地理範圍 |
-| `GET /api/search?q=` | 鄉鎮名稱搜尋（最多 10 筆） |
-| `GET /api/towns` | 所有鄉鎮 id/名稱/中心點（前端算最近鄉鎮） |
 
-CWA 授權碼只存在後端環境變數，前端不接觸 CWA。
+CWA 授權碼只存在後端環境變數，前端不接觸 CWA。成功回應帶 `cache-control: s-maxage=300` 讓 Vercel CDN 快取。
 
 ## 4. 前端
 
 ### 4.1 元件
 
-- `MapView`：MapLibre 地圖，承載所有圖層
-- `layers/TemperatureLayer`、`RainLayer`、`HumidityLayer`：「現在」用 IDW 內插熱圖；未來時段用鄉鎮分區色塊（鄉鎮邊界採 `taiwan-atlas` npm 套件的 TopoJSON，打包於前端靜態資源，以鄉鎮代碼對應 `towns.id`）
-- `layers/WindParticles`：測站風向量 → 規則網格（IDW）→ Canvas 粒子動畫
-- `layers/RadarLayer`、`SatelliteLayer`：MapLibre image source
+- `MapView`：MapLibre 地圖，點擊 → 最近鄉鎮
+- `DataLayers`：依圖層與時間決定要畫什麼：
+  - 「現在」＋溫度/風/雨量/濕度：測站 IDW 內插熱圖（直接以 Mercator 列間距計算，canvas source）
+  - 未來時段：鄉鎮分區色塊（`taiwan-atlas` 的 `towns-10t.json`，以 `TOWNCODE` 對應）；雨量圖層改顯示降雨機率
+  - 風：熱圖（風速）＋ `WindParticles` Canvas 粒子動畫（測站風向量 IDW 成網格）
+  - 雷達/衛星：CWA 圖片假設為經緯度等距投影，於前端逐列重投影到 Mercator 後以 canvas source 疊加
 - `LayerPicker`：右側直列圖層選單；手機收合為按鈕
-- `Timeline`：播放、時間刻度（現在 ~ 72h）、色階圖例；雷達/衛星停用未來時段
-- `SearchBox`：防抖搜尋＋GPS 定位
-- `LocationCard`：目前觀測、72h 溫度/降雨機率走勢圖、一週預報；桌機浮動卡片、手機底部抽屜
-- `api/client.ts`：TanStack Query 封裝
+- `Timeline`：播放、滑桿（現在 ~ 72h，共 24 格）、色階圖例；雷達/衛星停用未來時段
+- `SearchBox`：前端過濾鄉鎮（台/臺 視為相同）＋GPS 定位
+- `LocationCard`：最近測站即時觀測、未來 48h 溫度/降雨機率圖、一週預報；桌機浮動卡片、手機底部抽屜
+- `StatusBadge`：「更新於 HH:mm」、`stale` 提示、圖片載入失敗提示
+- `api.ts`：TanStack Query hooks
 
 ### 4.2 狀態與 UX
 
-- Zustand 管理 `layer`、`timeIndex`、`selectedTown`，並同步到 URL query（`?layer=wind&t=6&town=6600800`）
-- 深色毛玻璃風格、圖層淡入淡出、骨架載入畫面、顯示「更新於 HH:mm」，`stale` 時顯示提示標籤
-- 點擊地圖 → 以 `/api/towns` 中心點找最近鄉鎮
+- Zustand 管理 `layer`、`t`（0 = 現在）、`town`、`playing`，並同步到 URL query（`?layer=wind&t=6&town=10002010`）
+- 深色毛玻璃風格、圖層淡入、載入骨架、「更新於 HH:mm」
 
 ## 5. 錯誤處理
 
 - CWA 請求逾時 8 秒；失敗走 3.1 退路
 - CWA 缺值（如 `-99`、`-999`）於轉換層統一轉 `null`；前端略過 `null`
-- 圖片圖層載入失敗僅該圖層顯示「暫時無法取得」
+- 圖片圖層載入失敗僅於 `StatusBadge` 顯示「暫時無法取得」，其他圖層不受影響
+- 同步結果為 0 筆時視為失敗，不覆蓋既有資料
 
 ## 6. 測試
 
 - 後端：CWA 回應轉換（以真實 JSON fixture）、repository（in-memory SQLite）、TTL/退路邏輯
-- 前端：IDW 內插、風場網格、最近鄉鎮計算等純函式
-- 手動：本機 `vercel dev` 端到端檢查，瀏覽器實際確認各圖層
+- 前端：IDW 內插、Mercator 換算、重投影列對應、風場、最近鄉鎮、搜尋、URL 狀態、週預報分組等純函式
+- 手動：本機 `npm run dev`（Vite 內建 middleware 直接執行 `api/*.ts`）端到端檢查，瀏覽器實際確認各圖層
 
 ## 7. 部署
 

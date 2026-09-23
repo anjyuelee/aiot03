@@ -5,3 +5,4 @@ dist/
 .vercel/
 .superpowers/
 *.db-journal
+data/*.db
