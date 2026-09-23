@@ -59,6 +59,7 @@ forecast_3h(town_id TEXT, start_time TEXT, temp REAL, pop REAL, humidity REAL,
 forecast_week(town_id TEXT, start_time TEXT, end_time TEXT, min_temp REAL, max_temp REAL,
               pop REAL, wx TEXT, wx_code TEXT, PRIMARY KEY(town_id, start_time))
 images(kind TEXT PK, url TEXT, obs_time TEXT, west REAL, south REAL, east REAL, north REAL)
+satellite_tiles(id TEXT PK, png BLOB, west REAL, south REAL, east REAL, north REAL)   -- id 例如 '2/1/2'
 fetch_log(dataset TEXT PK, fetched_at TEXT)
 ```
 
@@ -73,9 +74,9 @@ fetch_log(dataset TEXT PK, fetched_at TEXT)
 | 鄉鎮 3 天預報 | `F-D0047-093` + `locationId=F-D0047-001,005,…,085` | 每次最多回傳 5 個縣市，需分批；3 小時一格 |
 | 鄉鎮一週預報 | `F-D0047-093` + `locationId=F-D0047-003,007,…,087` | 12 小時一格 |
 | 雷達回波 | `O-A0058-005`（fileapi） | 透明底 PNG，範圍 115–126.5E、17.75–29.25N |
-| 衛星雲圖 | `O-B0032-002`（fileapi） | 紅外線彩色 JPG，範圍 102–155E、0–50N |
+| 衛星雲圖 | `O-B0033-003`（fileapi → KMZ） | 東亞紅外線黑白 KMZ，內含各層級 GroundOverlay 圖塊與精確 `LatLonBox`；取 level 2（16 塊、每塊 312px、0.04°/px，約 1.6MB）存入 SQLite `satellite_tiles` |
 
-`F-D0047-089/091` 是縣市層級（22 筆），不採用。fileapi 以 302 轉址到 S3，S3 圖片有 `Access-Control-Allow-Origin: *`。
+`F-D0047-089/091` 是縣市層級（22 筆），不採用。`O-B0032-002` 為含標題與海岸線的非等距投影圖片，實測無法正確疊圖，改用 KMZ。fileapi 以 302 轉址到 S3，S3 圖片有 `Access-Control-Allow-Origin: *`。
 
 ### 3.4 API
 
@@ -87,7 +88,9 @@ fetch_log(dataset TEXT PK, fetched_at TEXT)
 | `GET /api/towns` | 所有鄉鎮 id/名稱/縣市/中心點（搜尋與最近鄉鎮都在前端算） |
 | `GET /api/forecast?town=ID` | 單一鄉鎮 3 小時與一週預報 |
 | `GET /api/forecast-grid[?time=ISO]` | `times`（所有 3 小時時段）＋指定時段所有鄉鎮數值 |
-| `GET /api/radar`、`GET /api/satellite` | 最新圖片 URL、時間、地理範圍 |
+| `GET /api/radar` | 最新雷達圖片 URL、時間、地理範圍 |
+| `GET /api/satellite` | 衛星觀測時間與圖塊清單（每塊的 URL 與範圍） |
+| `GET /api/satellite-tile?id=2/1/2` | 從 SQLite 讀出的 PNG 圖塊 |
 
 CWA 授權碼只存在後端環境變數，前端不接觸 CWA。成功回應帶 `cache-control: s-maxage=300` 讓 Vercel CDN 快取。
 
@@ -100,7 +103,8 @@ CWA 授權碼只存在後端環境變數，前端不接觸 CWA。成功回應帶
   - 「現在」＋溫度/風/雨量/濕度：測站 IDW 內插熱圖（直接以 Mercator 列間距計算，canvas source）
   - 未來時段：鄉鎮分區色塊（`taiwan-atlas` 的 `towns-10t.json`，以 `TOWNCODE` 對應）；雨量圖層改顯示降雨機率
   - 風：熱圖（風速）＋ `WindParticles` Canvas 粒子動畫（測站風向量 IDW 成網格）
-  - 雷達/衛星：CWA 圖片假設為經緯度等距投影，於前端逐列重投影到 Mercator 後以 canvas source 疊加
+  - 雷達：經緯度等距 PNG，於前端逐列重投影到 Mercator 後以 canvas source 疊加
+  - 衛星：16 個 KMZ 圖塊各自重投影；灰階亮度轉成白色雲層的透明度，只顯示雲、不遮住底圖
 - `LayerPicker`：右側直列圖層選單；手機收合為按鈕
 - `Timeline`：播放、滑桿（現在 ~ 72h，共 24 格）、色階圖例；雷達/衛星停用未來時段
 - `SearchBox`：前端過濾鄉鎮（台/臺 視為相同）＋GPS 定位
