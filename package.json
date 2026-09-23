@@ -1,0 +1,39 @@
+{
+  "name": "aiot03",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "vite --config frontend/vite.config.ts",
+    "build:db": "tsx --env-file-if-exists=.env scripts/build-db.ts",
+    "build": "npm run build:db && vite build --config frontend/vite.config.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p frontend/tsconfig.json"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.2",
+    "better-sqlite3": "^13.0.3",
+    "maplibre-gl": "^6.11.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1",
+    "taiwan-atlas": "^2021.9.20",
+    "topojson-client": "^3.1.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/topojson-client": "^3.1.5",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}
