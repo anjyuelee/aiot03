@@ -1,7 +1,10 @@
 export interface ValuePoint { lon: number; lat: number; v: number }
 
-/** 反距離權重（power 2）內插；距離所有測站超過 maxDist（度）的格點為 NaN。回傳 row-major（lats × lons）。 */
-export function idwGrid(points: ValuePoint[], lons: number[], lats: number[], maxDist: number): Float32Array {
+/**
+ * 反距離權重（power 2）內插；距離所有測站超過 maxDist（度）的格點為 NaN。回傳 row-major（lats × lons）。
+ * 若給 nearest，同時寫入每格到最近測站的距離（度）。
+ */
+export function idwGrid(points: ValuePoint[], lons: number[], lats: number[], maxDist: number, nearest?: Float32Array): Float32Array {
   const out = new Float32Array(lons.length * lats.length)
   const max2 = maxDist * maxDist
   for (let j = 0; j < lats.length; j++) {
@@ -22,6 +25,7 @@ export function idwGrid(points: ValuePoint[], lons: number[], lats: number[], ma
         den += 1 / d2
       }
       out[j * lons.length + i] = exact ?? (min2 > max2 ? NaN : num / den)
+      if (nearest) nearest[j * lons.length + i] = exact == null ? Math.sqrt(min2) : 0
     }
   }
   return out

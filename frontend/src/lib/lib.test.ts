@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { latToMercY, mercYToLat } from './mercator'
 import { idwGrid } from './idw'
+import { edgeFade } from './heat'
 import { parseHex, colorAt, fillColorExpr } from './colorScale'
 import { nearest, searchTowns } from './geo'
 import { fmtHour, fmtSlot, weekdayOf } from './format'
@@ -27,6 +28,23 @@ describe('idwGrid', () => {
   })
   it('returns NaN beyond maxDist from every station', () => {
     expect(Number.isNaN(idwGrid(pts, [125], [23], 0.5)[0])).toBe(true)
+  })
+  it('optionally reports distance to the nearest station', () => {
+    const near = new Float32Array(3)
+    idwGrid(pts, [120, 120.25, 125], [23], 0.5, near)
+    expect(near[0]).toBe(0)
+    expect(near[1]).toBeCloseTo(0.25 * Math.cos((23 * Math.PI) / 180), 5)
+    expect(near[2]).toBeCloseTo(4 * Math.cos((23 * Math.PI) / 180), 4)
+  })
+})
+
+describe('edgeFade', () => {
+  it('is opaque near stations and fades linearly to zero', () => {
+    expect(edgeFade(0)).toBe(1)
+    expect(edgeFade(0.15)).toBe(1)
+    expect(edgeFade(0.3)).toBeCloseTo(0.5, 6)
+    expect(edgeFade(0.45)).toBe(0)
+    expect(edgeFade(9)).toBe(0)
   })
 })
 
