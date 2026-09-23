@@ -3,8 +3,9 @@ import { useMemo } from 'react'
 import { feature } from 'topojson-client'
 import type { FeatureCollection, Geometry } from 'geojson'
 import type { Topology } from 'topojson-specification'
-import type { ApiResponse, ForecastGrid, ImageKind, ImageOverlay, Observation, Town, TownForecast } from '../../shared/types'
+import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast } from '../../shared/types'
 import { reprojectImage } from './lib/reproject'
+import { whitenClouds } from './lib/clouds'
 
 const TEN_MIN = 10 * 60_000
 
@@ -39,7 +40,7 @@ export function useFutureTimes(): string[] {
   )
 }
 
-export const useOverlay = (kind: ImageKind | null) =>
+export const useOverlay = (kind: 'radar' | null) =>
   useQuery({ queryKey: ['overlay', kind], queryFn: () => get<ImageOverlay>(`/api/${kind}`), enabled: !!kind, refetchInterval: TEN_MIN })
 
 export const useReprojected = (o: ImageOverlay | null) =>
@@ -48,6 +49,21 @@ export const useReprojected = (o: ImageOverlay | null) =>
     // 圖檔名固定，以觀測時間避開瀏覽器快取
     queryFn: () => reprojectImage(`${o!.url}?t=${encodeURIComponent(o!.obsTime)}`, o!.bounds),
     enabled: !!o,
+    staleTime: Infinity,
+  })
+
+export const useSatellite = (enabled: boolean) =>
+  useQuery({ queryKey: ['satellite'], queryFn: () => get<SatelliteOverlay>('/api/satellite'), enabled, refetchInterval: TEN_MIN })
+
+export const useSatelliteTiles = (s: SatelliteOverlay | null) =>
+  useQuery({
+    queryKey: ['satelliteTiles', s?.obsTime],
+    queryFn: () => Promise.all(s!.tiles.map(async tile => {
+      const o = await reprojectImage(tile.url, tile.bounds)
+      whitenClouds(o.canvas)
+      return o
+    })),
+    enabled: !!s,
     staleTime: Infinity,
   })
 

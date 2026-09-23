@@ -9,6 +9,7 @@ import { wxIcon } from './wx'
 import { windToUV, sampleField, type WindField } from './wind'
 import { parseUrlState, toSearch } from './urlState'
 import { sourceRowForMercRow } from './reproject'
+import { cloudAlpha } from './clouds'
 import type { Town, WeekSlot } from '../../../shared/types'
 
 describe('mercator', () => {
@@ -126,5 +127,22 @@ describe('sourceRowForMercRow', () => {
   it('stretches rows toward the pole', () => {
     // Mercator 中線對應的緯度高於 25°，所以來源列在上半部
     expect(sourceRowForMercRow(50, 100, 1000, 0, 50)).toBeLessThan(500)
+  })
+})
+
+describe('cloudAlpha', () => {
+  it('keeps warm ocean and night-time land transparent', () => {
+    expect(cloudAlpha(0)).toBe(0)
+    expect(cloudAlpha(90)).toBe(0)
+    expect(cloudAlpha(130)).toBe(0)
+  })
+  it('makes cold (bright) cloud tops opaque', () => {
+    expect(cloudAlpha(240)).toBe(255)
+    expect(cloudAlpha(255)).toBe(255)
+  })
+  it('ramps monotonically in between', () => {
+    expect(cloudAlpha(185)).toBeGreaterThan(100)
+    expect(cloudAlpha(185)).toBeLessThan(155)
+    expect(cloudAlpha(150)).toBeLessThan(cloudAlpha(220))
   })
 })

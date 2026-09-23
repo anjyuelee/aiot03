@@ -17,3 +17,9 @@ export function useImageOverlay(map: MlMap, id: string, src: CanvasOverlay | nul
     }
   }, [map, id, src, opacity])
 }
+
+/** 讓多個圖塊各自呼叫 hook，不必在迴圈裡呼叫 hook */
+export function ImageOverlay({ map, id, src, opacity }: { map: MlMap; id: string; src: CanvasOverlay; opacity: number }) {
+  useImageOverlay(map, id, src, opacity)
+  return null
+}
