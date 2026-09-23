@@ -7,6 +7,7 @@ import { SCALES } from '../lib/colorScale'
 import { renderHeat } from '../lib/heat'
 import { useImageOverlay } from '../map/useImageOverlay'
 import { useChoropleth } from '../map/useChoropleth'
+import WindParticles from './WindParticles'
 
 export default function DataLayers({ map }: { map: MlMap }) {
   const layer = useStore(s => s.layer)
@@ -33,5 +34,6 @@ export default function DataLayers({ map }: { map: MlMap }) {
   useImageOverlay(map, 'heat', heat, 0.7)
   useImageOverlay(map, 'image', image.data ?? null, layer === 'radar' ? 0.9 : 0.7)
   useChoropleth(map, choropleth, t > 0 && def.future ? SCALES[def.future.scale].stops : null)
+  if (layer === 'wind' && t === 0 && obs.data) return <WindParticles map={map} obs={obs.data.data} />
   return null
 }
