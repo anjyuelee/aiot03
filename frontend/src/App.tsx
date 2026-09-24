@@ -8,9 +8,12 @@ import StatusBadge from './components/StatusBadge'
 import LayerPicker from './components/LayerPicker'
 import Timeline from './components/Timeline'
 import LocationCard from './components/LocationCard'
+import TyphoonCard from './components/TyphoonCard'
+import { useStore } from './store'
 
 export default function App() {
   const [map, setMap] = useState<MlMap | null>(null)
+  const layer = useStore(s => s.layer)
   return (
     <>
       <MapView onReady={setMap} />
@@ -22,7 +25,7 @@ export default function App() {
       </div>
       <LayerPicker />
       <Timeline />
-      <LocationCard />
+      {layer === 'typhoon' ? <TyphoonCard /> : <LocationCard />}
     </>
   )
 }
