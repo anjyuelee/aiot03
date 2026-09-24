@@ -4,6 +4,7 @@ import MapView from './components/MapView'
 import DataLayers from './components/DataLayers'
 import SelectionMarker from './components/SelectionMarker'
 import Boundaries from './components/Boundaries'
+import Breadcrumb from './components/Breadcrumb'
 import SearchBox from './components/SearchBox'
 import StatusBadge from './components/StatusBadge'
 import LayerPicker from './components/LayerPicker'
@@ -23,6 +24,7 @@ export default function App() {
       {map && <SelectionMarker map={map} />}
       <div className="top-left">
         <SearchBox map={map} />
+        <Breadcrumb map={map} />
         <StatusBadge />
       </div>
       <LayerPicker />

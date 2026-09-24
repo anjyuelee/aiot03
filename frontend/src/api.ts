@@ -5,6 +5,7 @@ import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
 import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon } from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
+import type { CountyShapes } from './lib/geo'
 
 const FIVE_MIN = 5 * 60_000
 const TEN_MIN = 10 * 60_000
@@ -89,7 +90,8 @@ export const useBoundaries = () =>
       const topo = (await import('taiwan-atlas/towns-10t.json')).default as Topology
       const counties: MultiLineString = mesh(topo, topo.objects.counties as never)
       const towns: MultiLineString = mesh(topo, topo.objects.towns as never, (a, b) => a !== b)
-      return { counties, towns }
+      const countyShapes = feature(topo, topo.objects.counties) as unknown as CountyShapes
+      return { counties, towns, countyShapes }
     },
   })
 

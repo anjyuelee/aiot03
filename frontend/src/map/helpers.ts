@@ -1,4 +1,8 @@
-import type { Map as MlMap } from 'maplibre-gl'
+import type { LngLatBoundsLike, Map as MlMap } from 'maplibre-gl'
+
+/** 讓台灣本島填滿畫面；底部留給時間軸 */
+export const MAIN_ISLAND: LngLatBoundsLike = [[119.9, 21.85], [122.05, 25.35]]
+export const FIT_PADDING = { top: 40, bottom: 110, left: 40, right: 40 }
 
 /** 資料圖層放在第一個文字圖層之下，地名標籤才不會被蓋住 */
 export const firstSymbolLayer = (map: MlMap) => map.getLayersOrder().find(id => map.getLayer(id)?.type === 'symbol')

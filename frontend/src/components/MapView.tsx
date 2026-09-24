@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Map as MlMap, setWorkerUrl } from 'maplibre-gl'
 // 預設以 import.meta.url 找 worker，vite build 不會輸出該檔；改由 Vite 打包 worker（含其相依）
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { useTowns } from '../api'
+import { useBoundaries, useTowns } from '../api'
 import { useStore } from '../store'
-import { nearest } from '../lib/geo'
+import { countyBounds, nearest } from '../lib/geo'
 import { TAIWAN_BOUNDS } from '../lib/heat'
-import { TOWN_HIT } from '../map/helpers'
+import { FIT_PADDING, MAIN_ISLAND, TOWN_HIT } from '../map/helpers'
 import type { Town } from '../../../shared/types'
 
 setWorkerUrl(workerUrl)
@@ -21,6 +21,9 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
   const initialTown = useRef(useStore.getState().town)
   const { data } = useTowns()
   towns.current = data?.data ?? []
+  const shapes = useBoundaries().data
+  const counties = useRef(shapes?.countyShapes)
+  counties.current = shapes?.countyShapes
   // 沒指定地點時，以瀏覽器定位飛到使用者所在位置
   const [here, setHere] = useState<{ lon: number; lat: number } | null>(null)
 
@@ -28,9 +31,8 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     const map = new MlMap({
       container: ref.current!,
       style: BASEMAP,
-      // 依視窗大小讓台灣本島填滿畫面；底部留給時間軸
-      bounds: [[119.9, 21.85], [122.05, 25.35]],
-      fitBoundsOptions: { padding: { top: 40, bottom: 110, left: 40, right: 40 } },
+      bounds: MAIN_ISLAND,
+      fitBoundsOptions: { padding: FIT_PADDING },
       minZoom: 4,
       maxZoom: 16,
       attributionControl: { compact: true },
@@ -43,10 +45,20 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
       const { lng, lat } = e.lngLat
       const [w, s, east, n] = TAIWAN_BOUNDS
       if (lng < w || lng > east || lat < s || lat > n) return
-      // 點在鄉鎮多邊形內就選該鄉鎮；界線尚未載入或點在海上時退回最近的鄉鎮中心
-      const code = map.getLayer(TOWN_HIT) && map.queryRenderedFeatures(e.point, { layers: [TOWN_HIT] })[0]?.properties.TOWNCODE
-      const t = towns.current.find(x => x.id === code) ?? nearest(towns.current, lng, lat)
-      if (t) useStore.getState().selectTown(t.id)
+      // 界線尚未載入時退回最近的鄉鎮中心
+      if (!map.getLayer(TOWN_HIT)) {
+        const t = nearest(towns.current, lng, lat)
+        if (t) useStore.getState().selectTown(t.id)
+        return
+      }
+      // 逐層選取：先選縣市並縮放過去，在該縣市內再點才選鄉鎮
+      const hit = map.queryRenderedFeatures(e.point, { layers: [TOWN_HIT] })[0]?.properties
+      if (!hit) return
+      const { county, selectCounty, selectTown } = useStore.getState()
+      if (hit.COUNTYCODE === county) return selectTown(hit.TOWNCODE)
+      selectCounty(hit.COUNTYCODE)
+      const b = counties.current && countyBounds(counties.current, hit.COUNTYCODE)
+      if (b) map.fitBounds(b, { padding: FIT_PADDING, maxZoom: 11 })
     })
     return () => {
       onReady(null)
