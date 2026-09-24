@@ -37,6 +37,8 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     mapRef.current = map
     map.on('load', () => onReady(map))
     map.on('click', e => {
+      // 颱風圖層的點擊留給路徑點 popup
+      if (useStore.getState().layer === 'typhoon') return
       const { lng, lat } = e.lngLat
       const [w, s, east, n] = TAIWAN_BOUNDS
       if (lng < w || lng > east || lat < s || lat > n) return

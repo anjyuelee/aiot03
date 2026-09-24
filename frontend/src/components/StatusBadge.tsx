@@ -1,4 +1,4 @@
-import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds } from '../api'
+import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds, useTyphoons } from '../api'
 import { useStore } from '../store'
 import { fmtClock } from '../lib/format'
 
@@ -7,15 +7,17 @@ export default function StatusBadge() {
   const t = useStore(s => s.t)
   const isRadar = layer === 'radar'
   const isSatellite = layer === 'satellite'
+  const isTyphoon = layer === 'typhoon'
   const obs = useObservations()
   const radar = useOverlay(isRadar ? 'radar' : null)
   const image = useReprojected(isRadar ? radar.data?.data ?? null : null)
   const satellite = useSatellite(isSatellite)
   const clouds = useSatelliteClouds(isSatellite ? satellite.data?.data ?? null : null)
+  const typhoon = useTyphoons(isTyphoon)
   const times = useFutureTimes()
   const grid = useForecastGrid(t > 0 ? times[t - 1] ?? null : null)
 
-  const q = isSatellite ? satellite : isRadar ? radar : t > 0 ? grid : obs
+  const q = isTyphoon ? typhoon : isSatellite ? satellite : isRadar ? radar : t > 0 ? grid : obs
   if (q.isError || image.isError || clouds.isError) return <div className="badge glass warn">暫時無法取得資料</div>
   if (!q.data) return <div className="badge glass">載入中…</div>
 

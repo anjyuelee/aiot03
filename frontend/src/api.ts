@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { feature } from 'topojson-client'
 import type { FeatureCollection, Geometry } from 'geojson'
 import type { Topology } from 'topojson-specification'
-import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast } from '../../shared/types'
+import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon } from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
 
 const FIVE_MIN = 5 * 60_000
@@ -79,3 +79,6 @@ export const useTownShapes = () =>
       return feature(topo, topo.objects.towns) as unknown as TownShapes
     },
   })
+
+export const useTyphoons = (enabled: boolean) =>
+  useQuery({ queryKey: ['typhoon'], queryFn: () => get<Typhoon[]>('/api/typhoon'), enabled, refetchInterval: TEN_MIN })

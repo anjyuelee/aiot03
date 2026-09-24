@@ -1,7 +1,7 @@
 import type { ScaleId } from './colorScale'
 
-export type LayerId = 'temp' | 'wind' | 'rain' | 'humidity' | 'radar' | 'satellite'
-export const LAYER_IDS: LayerId[] = ['temp', 'wind', 'rain', 'humidity', 'radar', 'satellite']
+export type LayerId = 'temp' | 'wind' | 'rain' | 'humidity' | 'radar' | 'satellite' | 'typhoon'
+export const LAYER_IDS: LayerId[] = ['temp', 'wind', 'rain', 'humidity', 'radar', 'satellite', 'typhoon']
 
 export interface LayerDef {
   label: string
@@ -17,6 +17,7 @@ export const LAYERS: Record<LayerId, LayerDef> = {
   humidity: { label: '濕度', icon: '💧', now: { field: 'humidity', scale: 'humidity' }, future: { field: 'humidity', scale: 'humidity' } },
   radar: { label: '雷達', icon: '📡' },
   satellite: { label: '衛星', icon: '🛰️' },
+  typhoon: { label: '颱風', icon: '🌀' },
 }
 
 export const isLayerId = (s: unknown): s is LayerId => LAYER_IDS.includes(s as LayerId)
