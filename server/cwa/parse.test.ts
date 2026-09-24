@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../__fixtures__/load.js'
 import {
-  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage,
+  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseTyphoons,
 } from './parse.js'
 
 describe('num', () => {
@@ -77,5 +77,48 @@ describe('parseImage', () => {
       obsTime: '2026-09-23T19:50:00+08:00',
       bounds: [102, 0, 152, 50],
     })
+  })
+})
+
+describe('parseTyphoons', () => {
+  const list = parseTyphoons(fixture('W-C0034-005.json'))
+
+  it('parses names, id and track lengths', () => {
+    expect(list).toHaveLength(1)
+    const t = list[0]
+    expect(t.id).toBe('2026-29')
+    expect(t.name).toBe('舒力基')
+    expect(t.nameEn).toBe('SURIGAE')
+    expect(t.past).toHaveLength(8)
+    expect(t.forecast).toHaveLength(9)
+  })
+
+  it('converts the latest past fix and takes the max quadrant radius', () => {
+    expect(list[0].past.at(-1)).toEqual({
+      time: '2026-09-24T02:00:00+08:00', forecastHour: null, lat: 17.4, lon: 135.6,
+      pressure: 998, maxWind: 20, maxGust: 28, moveDir: 'WNW', moveSpeed: 34,
+      radius15ms: 120, radius70: null,
+    })
+    expect(list[0].past[0].radius15ms).toBeNull()
+  })
+
+  it('computes forecast times from InitialTime + ForecastHour', () => {
+    const f = list[0].forecast[0]
+    expect(f.time).toBe('2026-09-24T08:00:00+08:00')
+    expect(f.forecastHour).toBe(6)
+    expect([f.lon, f.lat]).toEqual([134.6, 17.7])
+    expect(f.radius15ms).toBe(120)
+    expect(f.radius70).toBe(40)
+    expect(list[0].forecast.at(-1)!.time).toBe('2026-09-29T02:00:00+08:00')
+  })
+
+  it('names unnamed depressions by TD number and tolerates missing data', () => {
+    const td = { Year: '2026', TyphoonName: '', CwaTyphoonName: '', CwaTdNo: '30', CwaTyNo: '',
+      AnalysisData: { Fix: [{ DateTime: '2026-09-24T02:00:00+08:00', CoordinateLongitude: '120', CoordinateLatitude: '15' }] } }
+    const [t] = parseTyphoons({ records: { TropicalCyclones: { TropicalCyclone: [td] } } })
+    expect(t.name).toBe('熱帶性低氣壓 TD30')
+    expect(t.nameEn).toBeNull()
+    expect(t.forecast).toEqual([])
+    expect(parseTyphoons({ records: {} })).toEqual([])
   })
 })

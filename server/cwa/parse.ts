@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- CWA JSON is external, shapes verified by fixtures */
-import type { Bounds, ForecastSlot, ImageKind, ImageOverlay, Town, WeekSlot } from '../../shared/types.js'
+import type { Bounds, ForecastSlot, ImageKind, ImageOverlay, Town, Typhoon, TyphoonFix, WeekSlot } from '../../shared/types.js'
 
 export interface StationRow { id: string; name: string; county: string; town: string; lat: number; lon: number }
 export interface WeatherObsRow { stationId: string; obsTime: string; temp: number | null; humidity: number | null; windSpeed: number | null; windDir: number | null }
@@ -143,4 +143,48 @@ export function parseImage(json: any, kind: ImageKind): ImageOverlay {
   return kind === 'radar'
     ? { kind, url: ds.resource.ProductURL, obsTime: ds.DateTime, bounds }
     : { kind, url: ds.Resource.ProductURL, obsTime: ds.ObsTime.Datetime, bounds }
+}
+
+const HOUR = 3600_000
+const TAIPEI = 8 * HOUR
+
+/** 以 +08:00 表示，與 CWA 其他時間欄位格式一致 */
+function addHours(iso: string, h: number): string {
+  return new Date(Date.parse(iso) + h * HOUR + TAIPEI).toISOString().slice(0, 19) + '+08:00'
+}
+
+function radius15(c: any): number | null {
+  const quads: number[] = (c?.QuadrantRadii?.Radius ?? []).map((r: any) => num(r.value)).filter((n: number | null) => n != null)
+  return quads.length ? Math.max(...quads) : num(c?.Radius)
+}
+
+function typhoonFix(f: any, time: string, forecastHour: number | null): TyphoonFix | null {
+  const lat = num(f.CoordinateLatitude)
+  const lon = num(f.CoordinateLongitude)
+  if (lat == null || lon == null) return null
+  return {
+    time, forecastHour, lat, lon,
+    pressure: num(f.Pressure),
+    maxWind: num(f.MaxWindSpeed),
+    maxGust: num(f.MaxGustSpeed),
+    moveDir: f.MovingDirection || null,
+    moveSpeed: num(f.MovingSpeed),
+    radius15ms: radius15(f.Circle15ms),
+    radius70: num(f.Radius70PercentProbability),
+  }
+}
+
+const isFix = (f: TyphoonFix | null): f is TyphoonFix => f != null
+
+export function parseTyphoons(json: any): Typhoon[] {
+  return (json.records?.TropicalCyclones?.TropicalCyclone ?? []).map((t: any): Typhoon => ({
+    id: `${t.Year}-${t.CwaTdNo}`,
+    name: t.CwaTyphoonName || `熱帶性低氣壓 TD${t.CwaTdNo}`,
+    nameEn: t.TyphoonName || null,
+    past: (t.AnalysisData?.Fix ?? []).map((f: any) => typhoonFix(f, f.DateTime, null)).filter(isFix),
+    forecast: (t.ForecastData?.Fix ?? []).map((f: any) => {
+      const h = Number(f.ForecastHour)
+      return typhoonFix(f, addHours(f.InitialTime, h), h)
+    }).filter(isFix),
+  }))
 }

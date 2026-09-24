@@ -82,3 +82,29 @@ export interface ApiResponse<T> {
   updatedAt: string | null
   stale: boolean
 }
+
+export interface TyphoonFix {
+  /** 過去點為觀測時間；預測點為 InitialTime + ForecastHour，皆為 +08:00 ISO 字串 */
+  time: string
+  /** 過去點為 null */
+  forecastHour: number | null
+  lat: number
+  lon: number
+  pressure: number | null
+  maxWind: number | null
+  maxGust: number | null
+  moveDir: string | null
+  moveSpeed: number | null
+  /** 七級風暴風半徑（km）；有象限半徑時取四象限最大值 */
+  radius15ms: number | null
+  /** 70% 機率半徑（km），僅預測點 */
+  radius70: number | null
+}
+
+export interface Typhoon {
+  id: string
+  name: string
+  nameEn: string | null
+  past: TyphoonFix[]
+  forecast: TyphoonFix[]
+}
