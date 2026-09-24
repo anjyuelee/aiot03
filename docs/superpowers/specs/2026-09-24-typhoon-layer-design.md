@@ -86,10 +86,10 @@ export interface Typhoon {
 - `frontend/src/components/TyphoonLayer.tsx`：
   - 過去路徑實線＋點；預測路徑虛線＋點＋半透明 70% 潛勢圓
   - 目前位置（`past` 最後一點）顯示颱風符號與七級風暴風圈
-  - 點擊路徑點開 MapLibre `Popup`；點到颱風要素時不觸發既有的「點地圖選鄉鎮」
+  - 點擊路徑點開 MapLibre `Popup`；颱風圖層下點地圖不選鄉鎮（`MapView` 依圖層略過）
   - 切入圖層、資料到齊後 `fitBounds(typhoonBounds(list))` 一次
   - 離開圖層時移除所有 source／layer／popup
-- `frontend/src/components/TyphoonCard.tsx`：僅颱風圖層顯示；每個颱風一列：名稱（中／英）、觀測時間、中心氣壓、最大風速／陣風、移向移速、七級風半徑。位置避開 `LocationCard`，實作時依實際畫面調整。
+- `frontend/src/components/TyphoonCard.tsx`：僅颱風圖層顯示；每個颱風一列：名稱（中／英）、觀測時間、中心氣壓、最大風速／陣風、移向移速、七級風半徑。颱風圖層時取代 `LocationCard`（同一個 `.card` 位置，`LocationCard` 不顯示）。
 
 ## 6. 錯誤處理
 
