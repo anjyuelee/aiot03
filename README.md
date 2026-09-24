@@ -16,6 +16,10 @@
 |---|---|
 | ![鄉鎮預報](docs/screenshots/forecast.png) | <img src="docs/screenshots/mobile.png" width="260" alt="手機版"> |
 
+| 颱風路徑（過去／預測路徑、暴風圈、潛勢圓，點路徑點看數值） | 颱風（手機版） |
+|---|---|
+| ![颱風](docs/screenshots/typhoon.png) | <img src="docs/screenshots/typhoon-mobile.png" width="260" alt="颱風手機版"> |
+
 ## 功能
 
 - **七種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風
