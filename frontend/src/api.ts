@@ -1,11 +1,11 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { feature, mesh, neighbors } from 'topojson-client'
+import { feature, mesh } from 'topojson-client'
 import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
-import type { GeometryCollection, Topology } from 'topojson-specification'
+import type { Topology } from 'topojson-specification'
 import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon } from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
-import { colorGraph, type CountyShapes } from './lib/geo'
+import type { CountyShapes } from './lib/geo'
 
 const FIVE_MIN = 5 * 60_000
 const TEN_MIN = 10 * 60_000
@@ -91,15 +91,7 @@ export const useBoundaries = () =>
       const counties: MultiLineString = mesh(topo, topo.objects.counties as never)
       const towns: MultiLineString = mesh(topo, topo.objects.towns as never, (a, b) => a !== b)
       const countyShapes = feature(topo, topo.objects.counties) as unknown as CountyShapes
-      // 行政區圖層的分色：縣市 3 色、鄉鎮 4 色即可讓相鄰區域都不同色
-      const townShapes = feature(topo, topo.objects.towns) as unknown as TownShapes
-      const withColors = (fc: CountyShapes | TownShapes, geoms: GeometryCollection, k: number) => {
-        const colors = colorGraph(neighbors(geoms.geometries as never), k)!
-        fc.features.forEach((f, i) => { (f.properties as { color?: number }).color = colors[i] })
-      }
-      withColors(countyShapes, topo.objects.counties as GeometryCollection, 3)
-      withColors(townShapes, topo.objects.towns as GeometryCollection, 4)
-      return { counties, towns, countyShapes, townShapes }
+      return { counties, towns, countyShapes }
     },
   })
 

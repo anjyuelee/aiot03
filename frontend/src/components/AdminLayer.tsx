@@ -1,23 +1,21 @@
 import { useEffect, useMemo } from 'react'
 import type { ExpressionSpecification, FilterSpecification, Map as MlMap } from 'maplibre-gl'
 import type { FeatureCollection, Point } from 'geojson'
-import { useBoundaries, useTowns } from '../api'
+import { useTownShapes, useTowns } from '../api'
 import { useStore } from '../store'
 import { countyOf } from '../lib/geo'
 import { dataLayerBefore, removeLayerAndSource } from '../map/helpers'
 
-// 前三色可兩兩區分（含色盲模擬）；第四色用淺灰，只有鄉鎮需要
-const PALETTE = ['#3987e5', '#d95926', '#199e70', '#c3c2b7']
-const COLOR: ExpressionSpecification = ['match', ['get', 'color'], 0, PALETTE[0], 1, PALETTE[1], 2, PALETTE[2], PALETTE[3]]
-const COUNTY_FILL = 'admin-county'
-const TOWN_FILL = 'admin-town'
+const HIGHLIGHT = '#3b82f6'
+const FILL = 'admin-fill'
 const LABELS = 'admin-labels'
 const inCounty = (county: string | null): ExpressionSpecification => ['==', ['get', 'COUNTYCODE'], county ?? '']
 
-/** 行政區圖層：全台時各縣市分色；選了縣市後改為其中鄉鎮分色，其他縣市變淡 */
+/** 行政區圖層：平常只有界線與名稱；點選的縣市或鄉鎮整塊填滿重點色 */
 export default function AdminLayer({ map }: { map: MlMap }) {
   const county = useStore(s => s.county)
-  const shapes = useBoundaries().data
+  const town = useStore(s => s.town)
+  const shapes = useTownShapes().data
   const towns = useTowns().data?.data
 
   // 鄉鎮名放在中心點；縣市名放在其鄉鎮中心點的平均位置
@@ -42,11 +40,9 @@ export default function AdminLayer({ map }: { map: MlMap }) {
   useEffect(() => {
     if (!shapes || !labels) return
     const before = dataLayerBefore(map)
-    map.addSource(COUNTY_FILL, { type: 'geojson', data: shapes.countyShapes })
-    map.addSource(TOWN_FILL, { type: 'geojson', data: shapes.townShapes })
+    map.addSource(FILL, { type: 'geojson', data: shapes })
     map.addSource(LABELS, { type: 'geojson', data: labels })
-    map.addLayer({ id: COUNTY_FILL, type: 'fill', source: COUNTY_FILL, paint: { 'fill-color': COLOR } }, before)
-    map.addLayer({ id: TOWN_FILL, type: 'fill', source: TOWN_FILL, paint: { 'fill-color': COLOR, 'fill-opacity': 0.5 } }, before)
+    map.addLayer({ id: FILL, type: 'fill', source: FILL, paint: { 'fill-color': HIGHLIGHT, 'fill-opacity': 0 } }, before)
     // 放在最上層，與底圖地名碰撞時優先顯示
     map.addLayer({ id: LABELS, type: 'symbol', source: LABELS,
       layout: {
@@ -57,21 +53,21 @@ export default function AdminLayer({ map }: { map: MlMap }) {
       paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.75)', 'text-halo-width': 1.5 } })
     return () => {
       removeLayerAndSource(map, LABELS)
-      removeLayerAndSource(map, TOWN_FILL)
-      removeLayerAndSource(map, COUNTY_FILL)
+      removeLayerAndSource(map, FILL)
     }
   }, [map, shapes, labels])
 
   useEffect(() => {
     if (!shapes || !labels) return
-    map.setPaintProperty(COUNTY_FILL, 'fill-opacity',
-      ['case', inCounty(county), 0, county ? 0.15 : 0.5] as ExpressionSpecification)
-    map.setFilter(TOWN_FILL, inCounty(county))
+    // 選了鄉鎮：該鄉鎮填滿、同縣市其他鄉鎮淡淡上色；只選縣市：整個縣市填滿
+    map.setPaintProperty(FILL, 'fill-opacity', (town
+      ? ['case', ['==', ['get', 'TOWNCODE'], town], 0.55, inCounty(county), 0.15, 0]
+      : ['case', inCounty(county), 0.45, 0]) as ExpressionSpecification)
     const labelFilter: FilterSpecification = county
       ? ['all', ['==', ['get', 'level'], 'town'], inCounty(county)]
       : ['==', ['get', 'level'], 'county']
     map.setFilter(LABELS, labelFilter)
-  }, [map, shapes, labels, county])
+  }, [map, shapes, labels, county, town])
 
   return null
 }

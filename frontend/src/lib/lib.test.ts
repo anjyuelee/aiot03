@@ -3,7 +3,7 @@ import { latToMercY, mercYToLat } from './mercator'
 import { idwGrid } from './idw'
 import { edgeFade } from './heat'
 import { parseHex, colorAt, fillColorExpr } from './colorScale'
-import { colorGraph, countyBounds, countyOf, nearest, searchTowns } from './geo'
+import { countyBounds, countyOf, nearest, searchTowns } from './geo'
 import { fmtHour, fmtSlot, weekdayOf } from './format'
 import { groupWeekByDay } from './week'
 import { wxIcon } from './wx'
@@ -91,14 +91,6 @@ describe('geo', () => {
     expect(countyBounds(counties, '09020')).toEqual([[118.2, 24.4], [119.5, 25]])
     expect(countyBounds(counties, '66000')).toEqual([[120.5, 24], [121, 24.4]])
     expect(countyBounds(counties, 'x')).toBeNull()
-  })
-  it('colors a graph so neighbors never share a color', () => {
-    // 0-1-2 三角形，3 接在 2 上，4 孤立
-    const nb = [[1, 2], [0, 2], [0, 1, 3], [2], []]
-    const c = colorGraph(nb, 3)!
-    nb.forEach((ns, v) => ns.forEach(u => expect(c[u]).not.toBe(c[v])))
-    expect(c.every(x => x >= 0 && x < 3)).toBe(true)
-    expect(colorGraph(nb, 2)).toBeNull()
   })
 })
 
