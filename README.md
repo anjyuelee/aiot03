@@ -20,6 +20,10 @@
 |---|---|
 | ![颱風](docs/screenshots/typhoon.png) | <img src="docs/screenshots/typhoon-mobile.png" width="260" alt="颱風手機版"> |
 
+| 行政區（縣市／鄉鎮界線與中文名稱） | 逐層選取（點縣市再點鄉鎮，選到的區塊填色） |
+|---|---|
+| ![行政區](docs/screenshots/admin.png) | ![逐層選取](docs/screenshots/admin-town.png) |
+
 ## 功能
 
 - **八種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風、行政區
