@@ -25,10 +25,11 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     const map = new MlMap({
       container: ref.current!,
       style: BASEMAP,
-      center: [120.9, 23.7],
-      zoom: 6.6,
+      // 依視窗大小讓台灣本島填滿畫面；底部留給時間軸
+      bounds: [[119.9, 21.85], [122.05, 25.35]],
+      fitBoundsOptions: { padding: { top: 40, bottom: 110, left: 40, right: 40 } },
       minZoom: 4,
-      maxZoom: 12,
+      maxZoom: 16,
       attributionControl: { compact: true },
     })
     mapRef.current = map
