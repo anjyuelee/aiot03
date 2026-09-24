@@ -4,8 +4,8 @@ import { fixture } from './__fixtures__/load.js'
 import { sampleKmz } from './__fixtures__/kmz.js'
 import { openDb, type DB } from './db.js'
 import type { Fetcher } from './cwa/client.js'
-import { syncObservations, syncForecast, syncImage } from './sync.js'
-import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles } from './repo.js'
+import { syncObservations, syncForecast, syncImage, syncTyphoons } from './sync.js'
+import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons } from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
 
@@ -104,5 +104,30 @@ describe('syncImage', () => {
     await expect(syncImage(db, 'satellite', f)).rejects.toThrow('no satellite tiles')
     expect(getImage(db, 'satellite')).toBeNull()
     expect(getFetchedAt(db, 'satellite')).toBeNull()
+  })
+})
+
+describe('syncTyphoons', () => {
+  const withTyphoons = (json: unknown): Fetcher => ({
+    async dataset(id) {
+      if (id === 'W-C0034-005') return json
+      throw new Error(`unexpected dataset ${id}`)
+    },
+    file: async () => { throw new Error('unexpected file') },
+    bytes: noBytes,
+  })
+
+  it('stores typhoons and logs the fetch', async () => {
+    await syncTyphoons(db, withTyphoons(fixture('W-C0034-005.json')))
+    const list = listTyphoons(db)
+    expect(list.map(t => t.name)).toEqual(['舒力基'])
+    expect(list[0].forecast).toHaveLength(9)
+    expect(getFetchedAt(db, 'typhoon')).not.toBeNull()
+  })
+
+  it('clears old typhoons when none are active', async () => {
+    await syncTyphoons(db, withTyphoons(fixture('W-C0034-005.json')))
+    await syncTyphoons(db, withTyphoons({ success: 'true', records: {} }))
+    expect(listTyphoons(db)).toEqual([])
   })
 })

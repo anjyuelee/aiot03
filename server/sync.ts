@@ -2,8 +2,8 @@ import type { DB } from './db.js'
 import type { ImageKind } from '../shared/types.js'
 import { cwa, type Fetcher } from './cwa/client.js'
 import { parseSatelliteKmz } from './cwa/kmz.js'
-import { parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseWeatherStations } from './cwa/parse.js'
-import { logFetch, replaceForecasts, replaceObservations, replaceSatelliteTiles, upsertImage } from './repo.js'
+import { parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseTyphoons, parseWeatherStations } from './cwa/parse.js'
+import { logFetch, replaceForecasts, replaceObservations, replaceSatelliteTiles, replaceTyphoons, upsertImage } from './repo.js'
 
 // F-D0047-001 起每 4 號一個縣市：+0 為 3 天預報、+2 為一週預報
 const countyIds = (offset: number) =>
@@ -58,4 +58,10 @@ export async function syncImage(db: DB, kind: ImageKind, f: Fetcher = cwa): Prom
     })()
   }
   logFetch(db, kind, now())
+}
+
+// 無活動中颱風時 CWA 回傳空清單，照樣清空舊資料
+export async function syncTyphoons(db: DB, f: Fetcher = cwa): Promise<void> {
+  replaceTyphoons(db, parseTyphoons(await f.dataset('W-C0034-005')))
+  logFetch(db, 'typhoon', now())
 }

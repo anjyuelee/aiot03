@@ -1,10 +1,10 @@
-import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast } from '../shared/types.js'
+import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon } from '../shared/types.js'
 import { getDb } from './db.js'
 import { ensureFresh } from './freshness.js'
 import {
-  getGrid, getImage, getSatelliteTile, getTownForecast, listGridTimes, listObservations, listSatelliteTiles, listTowns,
+  getGrid, getImage, getSatelliteTile, getTownForecast, listGridTimes, listObservations, listSatelliteTiles, listTowns, listTyphoons,
 } from './repo.js'
-import { syncForecast, syncImage, syncObservations } from './sync.js'
+import { syncForecast, syncImage, syncObservations, syncTyphoons } from './sync.js'
 
 export async function getObservations(): Promise<ApiResponse<Observation[]>> {
   const db = getDb()
@@ -58,3 +58,9 @@ export async function getSatellite(): Promise<ApiResponse<SatelliteOverlay> | nu
 }
 
 export const getSatelliteTilePng = (id: string) => getSatelliteTile(getDb(), id)
+
+export async function getTyphoons(): Promise<ApiResponse<Typhoon[]>> {
+  const db = getDb()
+  const meta = await ensureFresh(db, 'typhoon', () => syncTyphoons(db))
+  return { data: listTyphoons(db), ...meta }
+}

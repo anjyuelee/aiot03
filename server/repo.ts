@@ -1,5 +1,5 @@
 import type { DB } from './db.js'
-import type { Bounds, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, WeekSlot } from '../shared/types.js'
+import type { Bounds, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, WeekSlot } from '../shared/types.js'
 import type { RainObsRow, Slot3hRow, StationRow, WeatherObsRow, WeekRow } from './cwa/parse.js'
 import type { SatelliteTileRow } from './cwa/kmz.js'
 
@@ -97,6 +97,19 @@ export function listSatelliteTiles(db: DB): { id: string; bounds: Bounds }[] {
 export function getSatelliteTile(db: DB, id: string): Uint8Array | null {
   const r = db.prepare('SELECT png FROM satellite_tiles WHERE id = ?').get(id) as { png: Uint8Array } | undefined
   return r?.png ?? null
+}
+
+// 路徑為巢狀結構且一律整批讀寫，直接存 JSON
+export function replaceTyphoons(db: DB, list: Typhoon[]): void {
+  const insert = db.prepare('INSERT INTO typhoons (id, json) VALUES (?, ?)')
+  db.transaction(() => {
+    db.prepare('DELETE FROM typhoons').run()
+    for (const t of list) insert.run(t.id, JSON.stringify(t))
+  })()
+}
+
+export function listTyphoons(db: DB): Typhoon[] {
+  return (db.prepare('SELECT json FROM typhoons ORDER BY id').all() as { json: string }[]).map(r => JSON.parse(r.json))
 }
 
 export function logFetch(db: DB, dataset: string, at: string): void {
