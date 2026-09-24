@@ -4,7 +4,7 @@ import { idwGrid } from './idw'
 import { edgeFade } from './heat'
 import { parseHex, colorAt, fillColorExpr } from './colorScale'
 import { countyBounds, countyOf, nearest, searchTowns } from './geo'
-import { fmtHour, fmtSlot, weekdayOf } from './format'
+import { daySegments, fmtHour, fmtMD, fmtSlot, relDay, taipeiDate, weekdayOf } from './format'
 import { groupWeekByDay } from './week'
 import { wxIcon } from './wx'
 import { windToUV, sampleField, type WindField } from './wind'
@@ -99,6 +99,22 @@ describe('format', () => {
     expect(weekdayOf('2026-09-23')).toBe('三')
     expect(fmtHour('2026-09-23T18:00:00+08:00')).toBe('18時')
     expect(fmtSlot('2026-09-24T03:00:00+08:00')).toBe('週四 03:00')
+  })
+  it('names days relative to today in Taipei', () => {
+    expect(taipeiDate(new Date('2026-09-24T17:00:00Z'))).toBe('2026-09-25')
+    expect(relDay('2026-09-24', '2026-09-24')).toBe('今天')
+    expect(relDay('2026-09-25', '2026-09-24')).toBe('明天')
+    expect(relDay('2026-09-26', '2026-09-24')).toBe('後天')
+    expect(relDay('2026-09-27', '2026-09-24')).toBe('週日')
+    expect(relDay('2026-10-01', '2026-09-30')).toBe('明天')
+    expect(fmtMD('2026-09-05')).toBe('9/5')
+  })
+  it('groups timeline steps by day, step 0 being now', () => {
+    const times = ['2026-09-24T18:00:00+08:00', '2026-09-24T21:00:00+08:00', '2026-09-25T00:00:00+08:00', '2026-09-25T03:00:00+08:00']
+    expect(daySegments(times, '2026-09-24')).toEqual([
+      { date: '2026-09-24', from: 0, to: 2 },
+      { date: '2026-09-25', from: 3, to: 4 },
+    ])
   })
 })
 

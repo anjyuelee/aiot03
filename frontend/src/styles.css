@@ -60,9 +60,23 @@ button:disabled { opacity: 0.4; cursor: default; }
 /* 底部：時間軸 + 圖例 */
 .timeline { position: fixed; left: 50%; bottom: var(--gap); transform: translateX(-50%); width: min(760px, calc(100% - 2 * var(--gap))); z-index: 3; padding: 10px 14px; }
 .timeline-row { display: flex; align-items: center; gap: 12px; }
-.timeline-row input[type='range'] { flex: 1; accent-color: var(--accent); }
-.play { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); }
-.time-label { min-width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+.play { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); }
+/* 自訂滑桿讓 thumb 固定 16px，下方刻度左右內縮 8px 才會對齊 thumb 中心 */
+.track { flex: 1; min-width: 0; }
+.track input[type='range'] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 20px; margin: 0; background: none; cursor: pointer; }
+.track input[type='range']:disabled { cursor: default; }
+.track input[type='range']::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent) var(--pct), rgba(255, 255, 255, 0.18) var(--pct)); }
+.track input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent) var(--pct), rgba(255, 255, 255, 0.18) var(--pct)); }
+.track input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
+.track input[type='range']::-moz-range-thumb { box-sizing: border-box; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
+.ruler { position: relative; height: 20px; margin: 0 8px; }
+.tick { position: absolute; top: 0; width: 1px; height: 4px; background: rgba(255, 255, 255, 0.25); transform: translateX(-50%); }
+.tick.day { height: 18px; background: rgba(255, 255, 255, 0.45); }
+.day-label { position: absolute; top: 6px; padding-left: 5px; font-size: 11px; line-height: 1; color: var(--muted); white-space: nowrap; }
+.day-label.on { color: var(--text); font-weight: 600; }
+.time-label { flex: none; min-width: 104px; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.time-label strong { font-size: 17px; }
+.time-label small { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .legend { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
 .legend-bar { flex: 1; height: 8px; border-radius: 4px; }
 
@@ -87,7 +101,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 .typhoon-popup .maplibregl-popup-tip { display: none; }
 .maplibregl-ctrl-attrib { background: rgba(0, 0, 0, 0.4) !important; }
 /* 放在時間軸（含圖例約 78px）上方，避免被遮住 */
-.maplibregl-ctrl-bottom-right { bottom: calc(var(--gap) + 80px + env(safe-area-inset-bottom)); }
+.maplibregl-ctrl-bottom-right { bottom: calc(var(--gap) + 100px + env(safe-area-inset-bottom)); }
 
 /* 手機 */
 @media (max-width: 640px) {
@@ -96,5 +110,7 @@ button:disabled { opacity: 0.4; cursor: default; }
   .layer-toggle { display: block; }
   .layer-picker:not(.open) .layer-btn { display: none; }
   .timeline { bottom: calc(var(--gap) + env(safe-area-inset-bottom)); }
+  /* 手機的軸較短，刻度只寫今天／明天，完整日期看右側 */
+  .day-label .md { display: none; }
   .card { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 16px 16px 0 0; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 }

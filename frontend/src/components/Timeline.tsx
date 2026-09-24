@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useFutureTimes } from '../api'
 import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
-import { fmtSlot } from '../lib/format'
+import { daySegments, fmtMD, relDay, taipeiDate, weekdayOf } from '../lib/format'
 import Legend from './Legend'
 
 export default function Timeline() {
@@ -30,16 +30,41 @@ export default function Timeline() {
   }, [t, max, times.length, setT])
 
   const scale = t > 0 ? def.future?.scale : def.now?.scale
-  const label = t === 0 ? '現在' : times[t - 1] ? fmtSlot(times[t - 1]) : ''
+  const today = taipeiDate(new Date())
+  const slot = t > 0 ? times[t - 1] : undefined
+  const date = slot?.slice(0, 10) ?? today
+  const time = slot ? slot.slice(11, 16) : '現在'
+  const day = `${relDay(date, today)} ${fmtMD(date)}（${weekdayOf(date)}）`
+  const segs = max > 0 ? daySegments(times.slice(0, max), today) : []
+  const pct = (i: number) => `${(i / max) * 100}%`
   return (
     <div className="timeline glass">
       <div className="timeline-row">
         <button className="play" disabled={max === 0} onClick={() => setPlaying(!playing)} aria-label={playing ? '暫停' : '播放'}>
           {playing ? '❚❚' : '▶'}
         </button>
-        <input type="range" min={0} max={max} value={Math.min(t, max)} disabled={max === 0}
-          onChange={e => setT(Number(e.target.value))} aria-label="預報時間" aria-valuetext={label} />
-        <span className="time-label">{label}</span>
+        <div className="track">
+          <input type="range" min={0} max={max} value={Math.min(t, max)} disabled={max === 0}
+            style={{ '--pct': max ? pct(Math.min(t, max)) : '0%' } as React.CSSProperties}
+            onChange={e => setT(Number(e.target.value))} aria-label="預報時間" aria-valuetext={`${day} ${time}`} />
+          {max > 0 && (
+            <div className="ruler" aria-hidden>
+              {Array.from({ length: max + 1 }, (_, i) => (
+                <i key={i} className={segs.some(s => s.from === i && i > 0) ? 'tick day' : 'tick'} style={{ left: pct(i) }} />
+              ))}
+              {/* 太短的日期段（例如只剩一兩格）只畫分隔線，不放文字以免重疊 */}
+              {segs.filter(s => (s.to - s.from + 1) / (max + 1) >= 0.15).map(s => (
+                <span key={s.date} className={`day-label ${s.date === date ? 'on' : ''}`} style={{ left: pct(s.from) }}>
+                  {relDay(s.date, today)}<span className="md"> {fmtMD(s.date)}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="time-label">
+          <strong>{time}</strong>
+          <small>{day}</small>
+        </div>
       </div>
       {scale && <Legend scale={scale} />}
     </div>
