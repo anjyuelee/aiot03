@@ -121,4 +121,11 @@ describe('parseTyphoons', () => {
     expect(t.forecast).toEqual([])
     expect(parseTyphoons({ records: {} })).toEqual([])
   })
+
+  it('drops forecast fixes without a usable ForecastHour instead of failing', () => {
+    const fix = { InitialTime: '2026-09-24T02:00:00+08:00', CoordinateLongitude: '120', CoordinateLatitude: '15' }
+    const ty = { Year: '2026', CwaTdNo: '30', ForecastData: { Fix: [{ ...fix, ForecastHour: '6' }, fix] } }
+    const [t] = parseTyphoons({ records: { TropicalCyclones: { TropicalCyclone: [ty] } } })
+    expect(t.forecast.map(f => f.forecastHour)).toEqual([6])
+  })
 })

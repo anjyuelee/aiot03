@@ -184,6 +184,7 @@ export function parseTyphoons(json: any): Typhoon[] {
     past: (t.AnalysisData?.Fix ?? []).map((f: any) => typhoonFix(f, f.DateTime, null)).filter(isFix),
     forecast: (t.ForecastData?.Fix ?? []).map((f: any) => {
       const h = Number(f.ForecastHour)
+      if (!Number.isFinite(h) || !f.InitialTime) return null
       return typhoonFix(f, addHours(f.InitialTime, h), h)
     }).filter(isFix),
   }))
