@@ -40,3 +40,26 @@ export function searchTowns(towns: Town[], q: string, limit = 10): Town[] {
   if (!query) return []
   return towns.filter(t => norm(t.county + t.name).includes(query)).slice(0, limit)
 }
+
+/** 地圖著色：相鄰區域不同色（DSatur，失敗就回溯）；k 色不夠時回傳 null */
+export function colorGraph(neighbors: number[][], k: number): number[] | null {
+  const c: number[] = new Array(neighbors.length).fill(-1)
+  const go = (left: number): boolean => {
+    if (left === 0) return true
+    // 挑鄰居已用顏色最多的點，同分取鄰居多的
+    let v = -1, best = -1
+    neighbors.forEach((ns, i) => {
+      if (c[i] !== -1) return
+      const score = new Set(ns.map(u => c[u]).filter(x => x !== -1)).size * 1000 + ns.length
+      if (score > best) { best = score; v = i }
+    })
+    for (let color = 0; color < k; color++) {
+      if (neighbors[v].some(u => c[u] === color)) continue
+      c[v] = color
+      if (go(left - 1)) return true
+    }
+    c[v] = -1
+    return false
+  }
+  return go(neighbors.length) ? c : null
+}

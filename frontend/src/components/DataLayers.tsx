@@ -10,6 +10,7 @@ import { useImageOverlay } from '../map/useImageOverlay'
 import { useChoropleth } from '../map/useChoropleth'
 import WindParticles from './WindParticles'
 import TyphoonLayer from './TyphoonLayer'
+import AdminLayer from './AdminLayer'
 
 export default function DataLayers({ map }: { map: MlMap }) {
   const layer = useStore(s => s.layer)
@@ -50,6 +51,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
     <>
       {layer === 'wind' && !future && obs.data && <WindParticles map={map} obs={obs.data.data} />}
       {layer === 'typhoon' && typhoon.data && <TyphoonLayer map={map} list={typhoon.data.data} />}
+      {layer === 'admin' && <AdminLayer map={map} />}
     </>
   )
 }
