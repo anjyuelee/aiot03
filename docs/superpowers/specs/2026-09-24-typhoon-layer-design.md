@@ -9,7 +9,7 @@
 |---|---|
 | 圖層型態 | 第七個互斥圖層 `typhoon`，與溫度／風／雨量／濕度／雷達／衛星並列 |
 | 時間軸 | 停用（同雷達、衛星），一次畫出完整路徑 |
-| 視角 | 切到颱風圖層且資料到齊時，`fitBounds` 至「台灣＋所有颱風路徑點」；每次切入只做一次 |
+| 視角 | 切到颱風圖層且資料到齊時，`fitBounds` 至「台灣＋所有颱風路徑點」；每次切入只做一次。颱風圖層期間 `minZoom` 由 4 放寬為 3（手機寬度才放得下），離開時還原；首次載入時晚到的鄉鎮／定位不會 `flyTo` 蓋掉縮放 |
 | 資訊卡 | 列出每個颱風最新狀態；無颱風時顯示「目前無活動中的熱帶氣旋」 |
 | 點擊 popup | 點任一路徑點顯示該時刻數值；預測點標示「+Nh 預測」 |
 
@@ -70,7 +70,7 @@ export interface Typhoon {
 | `server/sync.ts` | `syncTyphoons(db, f = cwa)`：抓 → parse → `replaceTyphoons` → `logFetch` |
 | `server/freshness.ts` | `TTL.typhoon = 30 * MIN` |
 | `server/service.ts` | `getTyphoons(): Promise<ApiResponse<Typhoon[]>>` |
-| `api/typhoon.ts` | `GET`，仿 `api/radar.ts` |
+| `api/typhoon.ts` | `GET`，回傳 `getTyphoons()`（永遠有值，無 503 分支） |
 | `server/__fixtures__/W-C0034-005.json` | 2026-09-24 實抓資料 |
 
 以單表存 JSON：路徑為巢狀結構且一律整批讀寫，正規化無好處。
@@ -83,23 +83,24 @@ export interface Typhoon {
   - `circlePolygon(lon, lat, radiusKm, steps = 64)`：以大圓距離產生多邊形座標（不用像素半徑，縮放才正確）
   - `typhoonBounds(list)`：台灣範圍與所有路徑點的聯集
   - `toGeoJSON(list)`：路徑線、路徑點、暴風圈、潛勢圓的 FeatureCollection
+  - `fixLines(fix)`：popup 與資訊卡共用的數值文字列
 - `frontend/src/components/TyphoonLayer.tsx`：
-  - 過去路徑實線＋點；預測路徑虛線＋點＋半透明 70% 潛勢圓
-  - 目前位置（`past` 最後一點）顯示颱風符號與七級風暴風圈
-  - 點擊路徑點開 MapLibre `Popup`；颱風圖層下點地圖不選鄉鎮（`MapView` 依圖層略過）
+  - 過去路徑實線＋點；預測路徑虛線＋點＋70% 潛勢圓（淡色外框）
+  - 目前位置（`past` 最後一點）以放大的紅點標示，並畫七級風暴風圈
+  - 點擊路徑點開 MapLibre `Popup`（每次點擊建新的 Popup，沿用同一個會被自己的 closeOnClick 立刻關掉）；颱風圖層下點地圖不選鄉鎮（`MapView` 依圖層略過）
   - 切入圖層、資料到齊後 `fitBounds(typhoonBounds(list))` 一次
   - 離開圖層時移除所有 source／layer／popup
 - `frontend/src/components/TyphoonCard.tsx`：僅颱風圖層顯示；每個颱風一列：名稱（中／英）、觀測時間、中心氣壓、最大風速／陣風、移向移速、七級風半徑。颱風圖層時取代 `LocationCard`（同一個 `.card` 位置，`LocationCard` 不顯示）。
 
 ## 6. 錯誤處理
 
-沿用 `ensureFresh`：CWA 失敗時回傳 SQLite 舊資料並標示 stale（`StatusBadge` 顯示）。從未成功抓取時回傳空陣列，畫面顯示無颱風。
+沿用 `ensureFresh`：CWA 失敗時回傳 SQLite 舊資料並標示 stale（`StatusBadge` 顯示）。從未成功抓取時回傳空陣列（`stale: true`），資訊卡顯示無颱風、`StatusBadge` 顯示資料可能非最新。
 
 ## 7. 測試
 
 - `server/cwa/parse.test.ts`：fixture 解析 — 颱風數、名稱、過去／預測點數、字串轉數字、象限半徑取最大、預測點 `time` 計算
 - `server/sync.test.ts`：整批替換；0 個颱風時清空
-- `frontend/src/lib/lib.test.ts`：`circlePolygon` 半徑正確（抽點量距離）、`typhoonBounds` 包含台灣與所有點
+- `frontend/src/lib/typhoon.test.ts`：`circlePolygon` 半徑正確（抽點量距離）、`typhoonBounds` 包含台灣與所有點、`toGeoJSON` 要素組成、`fixLines` 文字
 - 手動：本機開啟頁面切到颱風圖層，截圖確認舒力基路徑、暴風圈、popup、資訊卡
 
 ## 8. 不做
