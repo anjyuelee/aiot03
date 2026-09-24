@@ -68,6 +68,13 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
     }
   }, [map, list])
 
+  // 颱風路徑常橫跨 20 多個經度，手機寬度在 zoom 4 放不下；離開圖層時還原
+  useEffect(() => {
+    const prev = map.getMinZoom()
+    map.setMinZoom(3)
+    return () => { map.setMinZoom(prev) }
+  }, [map])
+
   // 每次切入颱風圖層只縮放一次，之後不干擾使用者自行移動
   useEffect(() => {
     if (fitted.current || list.length === 0) return
