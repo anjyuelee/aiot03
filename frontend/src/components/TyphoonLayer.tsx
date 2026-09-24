@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Popup, type FilterSpecification, type Map as MlMap, type MapLayerMouseEvent } from 'maplibre-gl'
 import type { Typhoon } from '../../../shared/types'
 import { fixLines, toGeoJSON, typhoonBounds } from '../lib/typhoon'
-import { firstSymbolLayer, removeLayerAndSource } from '../map/helpers'
+import { dataLayerBefore, removeLayerAndSource } from '../map/helpers'
 
 const SRC = 'typhoon'
 const POINTS = 'typhoon-points'
@@ -17,7 +17,7 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
   const fitted = useRef(false)
 
   useEffect(() => {
-    const before = firstSymbolLayer(map)
+    const before = dataLayerBefore(map)
     map.addSource(SRC, { type: 'geojson', data: toGeoJSON(list) })
     map.addLayer({ id: 'typhoon-cone', type: 'line', source: SRC, filter: role('cone'),
       paint: { 'line-color': '#ffffff', 'line-opacity': 0.35, 'line-width': 1 } }, before)

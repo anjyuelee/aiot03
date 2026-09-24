@@ -6,6 +6,7 @@ import { useTowns } from '../api'
 import { useStore } from '../store'
 import { nearest } from '../lib/geo'
 import { TAIWAN_BOUNDS } from '../lib/heat'
+import { TOWN_HIT } from '../map/helpers'
 import type { Town } from '../../../shared/types'
 
 setWorkerUrl(workerUrl)
@@ -42,7 +43,9 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
       const { lng, lat } = e.lngLat
       const [w, s, east, n] = TAIWAN_BOUNDS
       if (lng < w || lng > east || lat < s || lat > n) return
-      const t = nearest(towns.current, lng, lat)
+      // 點在鄉鎮多邊形內就選該鄉鎮；界線尚未載入或點在海上時退回最近的鄉鎮中心
+      const code = map.getLayer(TOWN_HIT) && map.queryRenderedFeatures(e.point, { layers: [TOWN_HIT] })[0]?.properties.TOWNCODE
+      const t = towns.current.find(x => x.id === code) ?? nearest(towns.current, lng, lat)
       if (t) useStore.getState().selectTown(t.id)
     })
     return () => {

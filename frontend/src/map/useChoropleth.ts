@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import type { ExpressionSpecification, Map as MlMap } from 'maplibre-gl'
 import { useTownShapes } from '../api'
 import { fillColorExpr, type Stops } from '../lib/colorScale'
-import { firstSymbolLayer, removeLayerAndSource } from './helpers'
+import { dataLayerBefore, removeLayerAndSource } from './helpers'
 
 const ID = 'choropleth'
 const VALUE: ExpressionSpecification = ['feature-state', 'value']
@@ -20,7 +20,7 @@ export function useChoropleth(map: MlMap, values: Map<string, number | null> | n
       type: 'fill',
       source: ID,
       paint: { 'fill-color': 'rgba(0,0,0,0)', 'fill-opacity': 0.8, 'fill-outline-color': 'rgba(255,255,255,0.12)' },
-    }, firstSymbolLayer(map))
+    }, dataLayerBefore(map))
     return () => removeLayerAndSource(map, ID)
   }, [map, active, shapes.data])
 

@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { feature } from 'topojson-client'
-import type { FeatureCollection, Geometry } from 'geojson'
+import { feature, mesh } from 'topojson-client'
+import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
 import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon } from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
@@ -77,6 +77,19 @@ export const useTownShapes = () =>
     queryFn: async () => {
       const topo = (await import('taiwan-atlas/towns-10t.json')).default as Topology
       return feature(topo, topo.objects.towns) as unknown as TownShapes
+    },
+  })
+
+/** 縣市界含海岸線；鄉鎮界只取相鄰鄉鎮之間的線，避免與縣市界重疊 */
+export const useBoundaries = () =>
+  useQuery({
+    queryKey: ['boundaries'],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const topo = (await import('taiwan-atlas/towns-10t.json')).default as Topology
+      const counties: MultiLineString = mesh(topo, topo.objects.counties as never)
+      const towns: MultiLineString = mesh(topo, topo.objects.towns as never, (a, b) => a !== b)
+      return { counties, towns }
     },
   })
 
