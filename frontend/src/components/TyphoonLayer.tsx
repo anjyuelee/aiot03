@@ -37,7 +37,8 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
         'circle-stroke-width': ['case', ['get', 'current'], 2, 1],
       } })
 
-    const popup = new Popup({ closeButton: false, className: 'typhoon-popup' })
+    // 每次點擊建新的 popup：沿用同一個時，addTo 期間舊的 closeOnClick 監聽仍會在同一次 click 觸發而立刻關掉它
+    let popup: Popup | null = null
     const onClick = (e: MapLayerMouseEvent) => {
       const p = e.features?.[0]?.properties
       if (!p) return
@@ -47,7 +48,8 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
       const title = document.createElement('strong')
       title.textContent = t.name
       el.append(title, ...fixLines(f).map(line => Object.assign(document.createElement('div'), { textContent: line })))
-      popup.setLngLat([f.lon, f.lat]).setDOMContent(el).addTo(map)
+      popup?.remove()
+      popup = new Popup({ closeButton: false, className: 'typhoon-popup' }).setLngLat([f.lon, f.lat]).setDOMContent(el).addTo(map)
     }
     const pointer = () => { map.getCanvas().style.cursor = 'pointer' }
     const unpointer = () => { map.getCanvas().style.cursor = '' }
@@ -60,7 +62,7 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
       map.off('mouseenter', POINTS, pointer)
       map.off('mouseleave', POINTS, unpointer)
       unpointer()
-      popup.remove()
+      popup?.remove()
       for (const id of LAYER_IDS) removeLayerAndSource(map, id)
       removeLayerAndSource(map, SRC)
     }
