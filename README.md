@@ -1,6 +1,6 @@
 # 台灣天氣地圖（CWA Open Data）
 
-類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波與衛星雲圖。
+類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波、衛星雲圖與颱風路徑。
 
 🌐 **線上網址：<https://aiot03.vercel.app>**
 
@@ -18,12 +18,13 @@
 
 ## 功能
 
-- **六種圖層**：溫度、風、雨量、濕度、雷達、衛星
+- **七種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風
 - **即時熱圖**：全台自動站＋人工站觀測，以反距離權重（IDW）內插成連續色階，遠離測站處淡出
 - **風場粒子**：依測站風向風速內插的風場驅動粒子動畫
 - **時間軸**：拖曳或播放未來 72 小時（3 小時一格），切換為鄉鎮預報分區著色
 - **鄉鎮查詢**：搜尋或點擊地圖選取鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報
 - **雷達／衛星**：經緯度等距影像逐列重投影為 Web Mercator 後疊圖；衛星紅外線雲圖轉為白色半透明雲層
+- **颱風**：活動中熱帶氣旋的過去／預測路徑、七級風暴風圈與 70% 潛勢圓，點路徑點看該時刻數值；切入時自動縮放到台灣與整條路徑
 - **可分享網址**：圖層、時間、鄉鎮狀態同步到 URL（例：`?layer=temp&town=66000060`）
 
 ## 系統架構
@@ -48,7 +49,7 @@ flowchart LR
     CDN["CDN 快取<br/>s-maxage=60, SWR=60"]
     subgraph Fn["Vercel Functions（api/*.ts）"]
       direction TB
-      API["路由<br/>observations · towns · forecast<br/>forecast-grid · radar · satellite · satellite-tile"]
+      API["路由<br/>observations · towns · forecast<br/>forecast-grid · radar · satellite · satellite-tile · typhoon"]
       Service["service.ts"]
       Fresh["freshness.ts<br/>TTL 檢查 · 併發去重 · 失敗退避"]
       Sync["sync.ts<br/>抓取 → parse → 寫入"]
@@ -65,7 +66,7 @@ flowchart LR
 
   subgraph CWA["中央氣象署開放資料平臺"]
     direction TB
-    DS["datastore API<br/>O-A0001/0002/0003-001 觀測<br/>F-D0047-093 鄉鎮預報"]
+    DS["datastore API<br/>O-A0001/0002/0003-001 觀測<br/>F-D0047-093 鄉鎮預報<br/>W-C0034-005 颱風路徑"]
     FA["fileapi<br/>O-A0058-005 雷達<br/>O-B0033-003 衛星"]
     S3["S3 公開檔<br/>雷達 PNG · 衛星 KMZ"]
   end
@@ -129,6 +130,7 @@ sequenceDiagram
 | 鄉鎮預報 | 60 分鐘 | 10 分鐘（時段清單） |
 | 雷達 | 10 分鐘 | 10 分鐘 |
 | 衛星 | 10 分鐘 | 10 分鐘 |
+| 颱風 | 30 分鐘 | 10 分鐘 |
 
 ### 部署與種子資料
 
@@ -203,5 +205,6 @@ aiot03/
 | `GET /api/radar` | 最新雷達回波圖片資訊 |
 | `GET /api/satellite` | 最新衛星雲圖圖塊清單 |
 | `GET /api/satellite-tile?id=2/1/2` | 衛星雲圖圖塊（PNG，存於 SQLite） |
+| `GET /api/typhoon` | 活動中熱帶氣旋的過去與預測路徑 |
 
 所有 JSON 回應格式為 `{ data, updatedAt, stale }`，`stale: true` 表示 CWA 暫時無法更新、回傳的是舊資料。
