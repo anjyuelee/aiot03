@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
-import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds } from '../api'
+import { useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds, useTyphoons } from '../api'
 import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
 import { SCALES } from '../lib/colorScale'
@@ -9,6 +9,7 @@ import type { CanvasOverlay } from '../lib/reproject'
 import { useImageOverlay } from '../map/useImageOverlay'
 import { useChoropleth } from '../map/useChoropleth'
 import WindParticles from './WindParticles'
+import TyphoonLayer from './TyphoonLayer'
 
 export default function DataLayers({ map }: { map: MlMap }) {
   const layer = useStore(s => s.layer)
@@ -22,6 +23,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
   const image = useReprojected(layer === 'radar' ? radar.data?.data ?? null : null)
   const satellite = useSatellite(layer === 'satellite')
   const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null)
+  const typhoon = useTyphoons(layer === 'typhoon')
 
   // 熱圖只依欄位與觀測資料而定，時間軸來回切換時重用
   const heatCache = useMemo(() => new Map<string, CanvasOverlay>(), [obs.data])
@@ -44,5 +46,10 @@ export default function DataLayers({ map }: { map: MlMap }) {
   // 雲的透明度已在像素裡，整體不透明度可以調高
   useImageOverlay(map, 'satellite', layer === 'satellite' ? clouds.data ?? null : null, 0.9)
   useChoropleth(map, choropleth, future && def.future ? SCALES[def.future.scale].stops : null)
-  return layer === 'wind' && !future && obs.data ? <WindParticles map={map} obs={obs.data.data} /> : null
+  return (
+    <>
+      {layer === 'wind' && !future && obs.data && <WindParticles map={map} obs={obs.data.data} />}
+      {layer === 'typhoon' && typhoon.data && <TyphoonLayer map={map} list={typhoon.data.data} />}
+    </>
+  )
 }

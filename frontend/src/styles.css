@@ -76,6 +76,9 @@ button:disabled { opacity: 0.4; cursor: default; }
 @keyframes slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
+/* 颱風路徑點 popup */
+.typhoon-popup .maplibregl-popup-content { background: var(--glass); color: var(--text); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 12px; line-height: 1.6; backdrop-filter: blur(12px); }
+.typhoon-popup .maplibregl-popup-tip { display: none; }
 .maplibregl-ctrl-attrib { background: rgba(0, 0, 0, 0.4) !important; }
 /* 放在時間軸（含圖例約 78px）上方，避免被遮住 */
 .maplibregl-ctrl-bottom-right { bottom: calc(var(--gap) + 80px + env(safe-area-inset-bottom)); }
