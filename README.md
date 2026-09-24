@@ -26,7 +26,9 @@
 - **即時熱圖**：全台自動站＋人工站觀測，以反距離權重（IDW）內插成連續色階，遠離測站處淡出
 - **風場粒子**：依測站風向風速內插的風場驅動粒子動畫
 - **時間軸**：拖曳或播放未來 72 小時（3 小時一格），切換為鄉鎮預報分區著色
-- **鄉鎮查詢**：搜尋或點擊地圖選取鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報
+- **縣市／鄉鎮界線**：所有圖層上疊加縣市界（含海岸線）與鄉鎮界，鄉鎮界放大後才漸漸浮現
+- **逐層選取**：在地圖上先點選縣市（框起並縮放過去），在該縣市內再點才選到鄉鎮；以鄉鎮多邊形判定點擊位置，搜尋框下方的麵包屑（`← 全台 › 縣市 › 鄉鎮`）可退回上一層
+- **鄉鎮查詢**：搜尋、定位或逐層點選鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報
 - **雷達／衛星**：經緯度等距影像逐列重投影為 Web Mercator 後疊圖；衛星紅外線雲圖轉為白色半透明雲層
 - **颱風**：活動中熱帶氣旋的過去／預測路徑、七級風暴風圈與 70% 潛勢圓，點路徑點看該時刻數值；切入時自動縮放到台灣與整條路徑
 - **可分享網址**：圖層、時間、鄉鎮狀態同步到 URL（例：`?layer=temp&town=66000060`）
@@ -37,10 +39,10 @@
 flowchart LR
   subgraph Browser["瀏覽器（React + Vite SPA）"]
     direction TB
-    UI["UI 元件<br/>SearchBox · LayerPicker · Timeline<br/>LocationCard · StatusBadge · Legend"]
+    UI["UI 元件<br/>SearchBox · Breadcrumb · LayerPicker · Timeline<br/>LocationCard · StatusBadge · Legend"]
     Store["Zustand store<br/>layer / t / town ⇄ URL"]
     Query["TanStack Query<br/>定期 refetch / 快取"]
-    Render["繪圖 lib<br/>IDW 熱圖 · 風粒子 · 鄉鎮 choropleth<br/>Mercator 重投影 · 雲層處理"]
+    Render["繪圖 lib<br/>IDW 熱圖 · 風粒子 · 鄉鎮 choropleth<br/>縣市／鄉鎮界線 · Mercator 重投影 · 雲層處理"]
     Map["MapLibre GL"]
     UI <--> Store
     Store --> Query
@@ -77,7 +79,7 @@ flowchart LR
 
   subgraph Ext["第三方靜態資源"]
     Carto["CARTO dark-matter 底圖"]
-    Atlas["taiwan-atlas<br/>鄉鎮 TopoJSON（打包進前端）"]
+    Atlas["taiwan-atlas<br/>縣市／鄉鎮 TopoJSON（打包進前端）"]
   end
 
   subgraph CI["GitHub Actions"]
