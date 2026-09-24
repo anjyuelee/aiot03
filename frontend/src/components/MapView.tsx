@@ -56,7 +56,8 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     const t = data?.data.find(x => x.id === initialTown.current)
     if (!t || !mapRef.current) return
     initialTown.current = null
-    mapRef.current.flyTo({ center: [t.lon, t.lat], zoom: 10 })
+    // 颱風圖層已自動縮放到颱風路徑，不要被晚到的地點蓋掉
+    if (useStore.getState().layer !== 'typhoon') mapRef.current.flyTo({ center: [t.lon, t.lat], zoom: 10 })
   }, [data])
 
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     if (useStore.getState().town) return
     const t = nearest(data.data, here.lon, here.lat)
     if (t) useStore.getState().selectTown(t.id)
-    mapRef.current.flyTo({ center: [here.lon, here.lat], zoom: 10 })
+    if (useStore.getState().layer !== 'typhoon') mapRef.current.flyTo({ center: [here.lon, here.lat], zoom: 10 })
   }, [here, data])
 
   return <div ref={ref} className="map" />
