@@ -5,7 +5,7 @@ describe('json', () => {
   it('uses the normal cache header for a fresh 200', () => {
     const res = json({ data: [], stale: false })
     expect(res.status).toBe(200)
-    expect(res.headers.get('cache-control')).toBe('public, s-maxage=300, stale-while-revalidate=600')
+    expect(res.headers.get('cache-control')).toBe('public, s-maxage=60, stale-while-revalidate=60')
   })
 
   it('uses a short cache header for a stale 200', () => {

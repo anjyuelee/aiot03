@@ -6,6 +6,7 @@ import type { Topology } from 'topojson-specification'
 import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast } from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
 
+const FIVE_MIN = 5 * 60_000
 const TEN_MIN = 10 * 60_000
 // 重投影後的 canvas 佔記憶體，切走圖層後不久即釋放
 const CANVAS_GC = 60_000
@@ -17,7 +18,7 @@ async function get<T>(path: string): Promise<ApiResponse<T>> {
 }
 
 export const useObservations = () =>
-  useQuery({ queryKey: ['observations'], queryFn: () => get<Observation[]>('/api/observations'), refetchInterval: TEN_MIN })
+  useQuery({ queryKey: ['observations'], queryFn: () => get<Observation[]>('/api/observations'), refetchInterval: FIVE_MIN })
 
 export const useTowns = () =>
   useQuery({ queryKey: ['towns'], queryFn: () => get<Town[]>('/api/towns'), staleTime: Infinity })

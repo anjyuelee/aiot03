@@ -3,7 +3,7 @@ import { seedExists } from './db.js'
 function cacheControl(body: unknown, status: number): string {
   if (status !== 200) return 'no-store'
   const stale = typeof body === 'object' && body !== null && (body as { stale?: unknown }).stale === true
-  return stale ? 'public, s-maxage=30' : 'public, s-maxage=300, stale-while-revalidate=600'
+  return stale ? 'public, s-maxage=30' : 'public, s-maxage=60, stale-while-revalidate=60'
 }
 
 export function json(body: unknown, status = 200): Response {

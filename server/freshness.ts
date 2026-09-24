@@ -4,7 +4,7 @@ import { getFetchedAt } from './repo.js'
 const MIN = 60_000
 
 export const TTL = {
-  observations: 10 * MIN,
+  observations: 5 * MIN,
   forecast: 60 * MIN,
   radar: 10 * MIN,
   satellite: 10 * MIN,
