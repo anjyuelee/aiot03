@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Map as MlMap, setWorkerUrl } from 'maplibre-gl'
 // 預設以 import.meta.url 找 worker，vite build 不會輸出該檔；改由 Vite 打包 worker（含其相依）
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
@@ -20,6 +20,8 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
   const initialTown = useRef(useStore.getState().town)
   const { data } = useTowns()
   towns.current = data?.data ?? []
+  // 沒指定地點時，以瀏覽器定位飛到使用者所在位置
+  const [here, setHere] = useState<{ lon: number; lat: number } | null>(null)
 
   useEffect(() => {
     const map = new MlMap({
@@ -54,6 +56,23 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     initialTown.current = null
     mapRef.current.flyTo({ center: [t.lon, t.lat], zoom: 10 })
   }, [data])
+
+  useEffect(() => {
+    if (initialTown.current || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(p => setHere({ lon: p.coords.longitude, lat: p.coords.latitude }))
+  }, [])
+
+  useEffect(() => {
+    if (!here || !data || !mapRef.current) return
+    setHere(null)
+    const [w, s, east, n] = TAIWAN_BOUNDS
+    if (here.lon < w || here.lon > east || here.lat < s || here.lat > n) return
+    // 定位回來前使用者已自行選了地點就不覆蓋
+    if (useStore.getState().town) return
+    const t = nearest(data.data, here.lon, here.lat)
+    if (t) useStore.getState().selectTown(t.id)
+    mapRef.current.flyTo({ center: [here.lon, here.lat], zoom: 10 })
+  }, [here, data])
 
   return <div ref={ref} className="map" />
 }
