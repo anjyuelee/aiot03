@@ -30,7 +30,7 @@
 
 ## 功能
 
-- **八種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風、行政區
+- **九種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風、特報、行政區
 - **即時熱圖**：全台自動站＋人工站觀測，以反距離權重（IDW）內插成連續色階，遠離測站處淡出
 - **風場粒子**：依測站風向風速內插的風場驅動粒子動畫
 - **時間軸**：拖曳或播放未來 72 小時（3 小時一格），切換為鄉鎮預報分區著色；播放時在時段間線性內插、顏色平滑漸變，「現在」與預報之間淡入淡出，停下時對齊整點時段；整條日期刻度可拖曳，跟隨標籤顯示日期與時間；雷達、颱風、行政區等無時間序列的圖層不顯示時間軸
@@ -40,6 +40,7 @@
 - **鄉鎮查詢**：搜尋、定位或逐層點選鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報
 - **雷達／衛星**：經緯度等距影像逐列重投影為 Web Mercator 後疊圖；衛星紅外線雲圖可切換「色調強化」（依雲頂溫度由灰、藍、綠、黃到紅紫上色）或白色半透明雲層
 - **颱風**：活動中熱帶氣旋的過去／預測路徑、七級風暴風圈與 70% 潛勢圓，點路徑點看該時刻數值；切入時自動縮放到台灣與整條路徑
+- **特報**：發布中的縣市天氣特報依最嚴重種類為縣市著色（颱風警報、大豪雨、豪雨、大雨、低溫、強風、濃霧），資訊卡依種類列出縣市與有效時間；左上角徽章在任何圖層都提示目前特報，點了切到特報圖層
 - **底圖切換**：右下角可切換深色、淺色、街道、衛星（Sentinel-2 無雲影像＋國土測繪中心正射影像）與地形（OpenTopoMap）；淺色底圖上的界線、颱風路徑與風粒子自動改用深色
 - **可分享網址**：圖層、時間、鄉鎮狀態同步到 URL（例：`?layer=temp&town=66000060`）
 
@@ -65,7 +66,7 @@ flowchart LR
     CDN["CDN 快取<br/>s-maxage=60, SWR=60"]
     subgraph Fn["Vercel Functions（api/*.ts）"]
       direction TB
-      API["路由<br/>observations · towns · forecast<br/>forecast-grid · radar · satellite · satellite-tile · typhoon"]
+      API["路由<br/>observations · towns · forecast<br/>forecast-grid · radar · satellite · satellite-tile · typhoon · warnings"]
       Service["service.ts"]
       Fresh["freshness.ts<br/>TTL 檢查 · 併發去重 · 失敗退避"]
       Sync["sync.ts<br/>抓取 → parse → 寫入"]
@@ -82,7 +83,7 @@ flowchart LR
 
   subgraph CWA["中央氣象署開放資料平臺"]
     direction TB
-    DS["datastore API<br/>O-A0001/0002/0003-001 觀測<br/>F-D0047-093 鄉鎮預報<br/>W-C0034-005 颱風路徑"]
+    DS["datastore API<br/>O-A0001/0002/0003-001 觀測<br/>F-D0047-093 鄉鎮預報<br/>W-C0034-005 颱風路徑<br/>W-C0033-001 縣市特報"]
     FA["fileapi<br/>O-A0058-005 雷達<br/>O-B0033-003 衛星"]
     S3["S3 公開檔<br/>雷達 PNG · 衛星 KMZ"]
   end
@@ -147,6 +148,7 @@ sequenceDiagram
 | 雷達 | 10 分鐘 | 10 分鐘 |
 | 衛星 | 10 分鐘 | 10 分鐘 |
 | 颱風 | 30 分鐘 | 10 分鐘 |
+| 特報 | 10 分鐘 | 10 分鐘 |
 
 ### 部署與種子資料
 
@@ -222,5 +224,6 @@ aiot03/
 | `GET /api/satellite` | 最新衛星雲圖圖塊清單 |
 | `GET /api/satellite-tile?id=2/1/2` | 衛星雲圖圖塊（PNG，存於 SQLite） |
 | `GET /api/typhoon` | 活動中熱帶氣旋的過去與預測路徑 |
+| `GET /api/warnings` | 發布中的縣市天氣特報 |
 
 所有 JSON 回應格式為 `{ data, updatedAt, stale }`，`stale: true` 表示 CWA 暫時無法更新、回傳的是舊資料。
