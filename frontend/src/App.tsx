@@ -8,6 +8,7 @@ import Breadcrumb from './components/Breadcrumb'
 import SearchBox from './components/SearchBox'
 import StatusBadge from './components/StatusBadge'
 import LayerPicker from './components/LayerPicker'
+import BasemapPicker from './components/BasemapPicker'
 import Timeline from './components/Timeline'
 import LocationCard from './components/LocationCard'
 import TyphoonCard from './components/TyphoonCard'
@@ -28,6 +29,7 @@ export default function App() {
         <StatusBadge />
       </div>
       <LayerPicker />
+      <BasemapPicker />
       <Timeline />
       {layer === 'typhoon' ? <TyphoonCard /> : <LocationCard />}
     </>

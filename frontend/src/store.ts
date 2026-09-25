@@ -3,6 +3,7 @@ import { LAYERS, type LayerId } from './lib/layers'
 import { parseUrlState, toSearch } from './lib/urlState'
 import { countyOf } from './lib/geo'
 import type { CloudMode } from './lib/clouds'
+import type { BasemapId } from './lib/basemaps'
 
 interface State {
   layer: LayerId
@@ -12,12 +13,14 @@ interface State {
   county: string | null
   playing: boolean
   cloudMode: CloudMode
+  basemap: BasemapId
   setLayer: (layer: LayerId) => void
   setT: (t: number) => void
   selectTown: (town: string | null) => void
   selectCounty: (county: string | null) => void
   setPlaying: (playing: boolean) => void
   setCloudMode: (cloudMode: CloudMode) => void
+  setBasemap: (basemap: BasemapId) => void
 }
 
 const initial = parseUrlState(window.location.search)
@@ -27,6 +30,7 @@ export const useStore = create<State>(set => ({
   county: initial.town && countyOf(initial.town),
   playing: false,
   cloudMode: 'enhanced',
+  basemap: 'dark',
   // 雷達/衛星沒有未來時段，切換時回到「現在」
   setLayer: layer => set(s => ({ layer, t: LAYERS[layer].future ? s.t : 0, playing: LAYERS[layer].future ? s.playing : false })),
   setT: t => set({ t }),
@@ -34,6 +38,7 @@ export const useStore = create<State>(set => ({
   selectCounty: county => set({ county, town: null }),
   setPlaying: playing => set({ playing }),
   setCloudMode: cloudMode => set({ cloudMode }),
+  setBasemap: basemap => set({ basemap }),
 }))
 
 useStore.subscribe(({ layer, t, town }) => {

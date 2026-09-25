@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFutureTimes } from '../api'
 import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
@@ -14,6 +14,7 @@ export default function Timeline() {
   const setPlaying = useStore(s => s.setPlaying)
   const times = useFutureTimes()
   const def = LAYERS[layer]
+  const ref = useRef<HTMLDivElement>(null)
   const max = def.future ? times.length : 0
 
   useEffect(() => {
@@ -26,6 +27,14 @@ export default function Timeline() {
   }, [playing, max, setT])
 
   // URL 帶入的 t 超出範圍（例如資料已更新）時回到現在
+  // 時間軸高度會隨圖例、雲圖切換改變；寫進 CSS 變數，讓右下角的元件在窄螢幕時避開它
+  useEffect(() => {
+    const el = ref.current!
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--timeline-h', `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   useEffect(() => {
     if (times.length > 0 && t > max) setT(0)
   }, [t, max, times.length, setT])
@@ -39,7 +48,7 @@ export default function Timeline() {
   const segs = max > 0 ? daySegments(times.slice(0, max), today) : []
   const pct = (i: number) => `${(i / max) * 100}%`
   return (
-    <div className="timeline glass">
+    <div className="timeline glass" ref={ref}>
       <div className="timeline-row">
         <button className="play" disabled={max === 0} onClick={() => setPlaying(!playing)} aria-label={playing ? '暫停' : '播放'}>
           {playing ? '❚❚' : '▶'}

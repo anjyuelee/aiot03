@@ -3,6 +3,8 @@ import { Popup, type FilterSpecification, type Map as MlMap, type MapLayerMouseE
 import type { Typhoon } from '../../../shared/types'
 import { fixLines, toGeoJSON, typhoonBounds } from '../lib/typhoon'
 import { dataLayerBefore, removeLayerAndSource } from '../map/helpers'
+import { useStore } from '../store'
+import { inkOf } from '../lib/basemaps'
 
 const SRC = 'typhoon'
 const POINTS = 'typhoon-points'
@@ -15,24 +17,25 @@ const fitPadding = () => matchMedia('(max-width: 640px)').matches
 
 export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[] }) {
   const fitted = useRef(false)
+  const ink = useStore(s => inkOf(s.basemap))
 
   useEffect(() => {
     const before = dataLayerBefore(map)
     map.addSource(SRC, { type: 'geojson', data: toGeoJSON(list) })
     map.addLayer({ id: 'typhoon-cone', type: 'line', source: SRC, filter: role('cone'),
-      paint: { 'line-color': '#ffffff', 'line-opacity': 0.35, 'line-width': 1 } }, before)
+      paint: { 'line-color': ink, 'line-opacity': 0.35, 'line-width': 1 } }, before)
     map.addLayer({ id: 'typhoon-wind-fill', type: 'fill', source: SRC, filter: role('wind'),
       paint: { 'fill-color': '#fa5252', 'fill-opacity': 0.2 } }, before)
     map.addLayer({ id: 'typhoon-wind-line', type: 'line', source: SRC, filter: role('wind'),
       paint: { 'line-color': '#fa5252', 'line-width': 1.5 } }, before)
     map.addLayer({ id: 'typhoon-track-past', type: 'line', source: SRC, filter: role('track-past'),
-      paint: { 'line-color': '#ffffff', 'line-width': 2 } }, before)
+      paint: { 'line-color': ink, 'line-width': 2 } }, before)
     map.addLayer({ id: 'typhoon-track-forecast', type: 'line', source: SRC, filter: role('track-forecast'),
-      paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [2, 2] } }, before)
+      paint: { 'line-color': ink, 'line-width': 2, 'line-dasharray': [2, 2] } }, before)
     map.addLayer({ id: POINTS, type: 'circle', source: SRC, filter: role('point'),
       paint: {
         'circle-radius': ['case', ['get', 'current'], 7, 4],
-        'circle-color': ['case', ['get', 'current'], '#fa5252', ['==', ['get', 'kind'], 'past'], '#ffffff', '#0b0e17'],
+        'circle-color': ['case', ['get', 'current'], '#fa5252', ['==', ['get', 'kind'], 'past'], ink, '#0b0e17'],
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': ['case', ['get', 'current'], 2, 1],
       } })
@@ -66,7 +69,7 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
       for (const id of LAYER_IDS) removeLayerAndSource(map, id)
       removeLayerAndSource(map, SRC)
     }
-  }, [map, list])
+  }, [map, list, ink])
 
   // 颱風路徑常橫跨 20 多個經度，手機寬度在 zoom 4 放不下；離開圖層時還原
   useEffect(() => {

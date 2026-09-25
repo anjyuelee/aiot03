@@ -3,6 +3,8 @@ import type { Map as MlMap } from 'maplibre-gl'
 import type { Observation } from '../../../shared/types'
 import { buildWindField, sampleField } from '../lib/wind'
 import { TAIWAN_BOUNDS } from '../lib/heat'
+import { useStore } from '../store'
+import { BASEMAPS } from '../lib/basemaps'
 
 const COUNT = 3000
 const MAX_AGE = 90
@@ -12,6 +14,7 @@ const SPEED = 0.0022
 interface Particle { lon: number; lat: number; age: number }
 
 export default function WindParticles({ map, obs }: { map: MlMap; obs: Observation[] }) {
+  const dark = useStore(s => BASEMAPS[s.basemap].dark)
   const ref = useRef<HTMLCanvasElement>(null)
   const field = useMemo(() => buildWindField(obs, TAIWAN_BOUNDS), [obs])
 
@@ -60,7 +63,7 @@ export default function WindParticles({ map, obs }: { map: MlMap; obs: Observati
       ctx.fillStyle = 'rgba(0,0,0,0.92)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.globalCompositeOperation = 'source-over'
-      ctx.strokeStyle = 'rgba(255,255,255,0.75)'
+      ctx.strokeStyle = dark ? 'rgba(255,255,255,0.75)' : 'rgba(31,41,55,0.75)'
       ctx.lineWidth = 1.2
       ctx.beginPath()
       const k = SPEED / Math.pow(2, map.getZoom() - 6)
@@ -87,7 +90,7 @@ export default function WindParticles({ map, obs }: { map: MlMap; obs: Observati
       map.off('moveend', fitView)
       map.off('resize', resize)
     }
-  }, [map, field])
+  }, [map, field, dark])
 
   return <canvas ref={ref} className="wind-canvas" />
 }

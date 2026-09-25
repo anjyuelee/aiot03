@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Map as MlMap, setWorkerUrl } from 'maplibre-gl'
 // 預設以 import.meta.url 找 worker，vite build 不會輸出該檔；改由 Vite 打包 worker（含其相依）
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
@@ -7,11 +8,10 @@ import { useStore } from '../store'
 import { countyBounds, nearest } from '../lib/geo'
 import { TAIWAN_BOUNDS } from '../lib/heat'
 import { FIT_PADDING, MAIN_ISLAND, TOWN_HIT } from '../map/helpers'
+import { BASEMAPS } from '../lib/basemaps'
 import type { Town } from '../../../shared/types'
 
 setWorkerUrl(workerUrl)
-
-const BASEMAP = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
 export default function MapView({ onReady }: { onReady: (map: MlMap | null) => void }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -24,13 +24,15 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
   const shapes = useBoundaries().data
   const counties = useRef(shapes?.countyShapes)
   counties.current = shapes?.countyShapes
+  const basemap = useStore(s => s.basemap)
+  const applied = useRef(basemap)
   // 沒指定地點時，以瀏覽器定位飛到使用者所在位置
   const [here, setHere] = useState<{ lon: number; lat: number } | null>(null)
 
   useEffect(() => {
     const map = new MlMap({
       container: ref.current!,
-      style: BASEMAP,
+      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
       bounds: MAIN_ISLAND,
       fitBoundsOptions: { padding: FIT_PADDING },
       minZoom: 4,
@@ -66,6 +68,21 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
       map.remove()
     }
   }, [onReady])
+
+  // 換底圖會清掉 style 裡所有圖層：先同步卸下資料圖層，新 style 載入後再掛回去讓它們重新加入
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || basemap === applied.current) return
+    applied.current = basemap
+    let cancelled = false
+    BASEMAPS[basemap].style().then(style => {
+      if (cancelled) return
+      flushSync(() => onReady(null))
+      map.once('style.load', () => onReady(map))
+      map.setStyle(style, { diff: false })
+    })
+    return () => { cancelled = true }
+  }, [basemap, onReady])
 
   useEffect(() => {
     const t = data?.data.find(x => x.id === initialTown.current)

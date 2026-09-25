@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { FilterSpecification, Map as MlMap } from 'maplibre-gl'
 import { useBoundaries, useTownShapes } from '../api'
 import { useStore } from '../store'
+import { inkOf } from '../lib/basemaps'
 import { TOWN_HIT, firstSymbolLayer, removeLayerAndSource } from '../map/helpers'
 
 const TOWN_LINE = 'town-line'
@@ -16,6 +17,7 @@ const selectedCounty = (county: string | null): FilterSpecification => ['==', ['
 export default function Boundaries({ map }: { map: MlMap }) {
   const town = useStore(s => s.town)
   const county = useStore(s => s.county)
+  const ink = useStore(s => inkOf(s.basemap))
   const shapes = useTownShapes()
   const lines = useBoundaries()
   const ready = !!shapes.data && !!lines.data
@@ -31,11 +33,11 @@ export default function Boundaries({ map }: { map: MlMap }) {
     map.addLayer({ id: TOWN_HIT, type: 'fill', source: TOWN_HIT, paint: { 'fill-opacity': 0 } }, before)
     // 縮小時鄉鎮界太密，放大後才漸漸出現
     map.addLayer({ id: TOWN_LINE, type: 'line', source: TOWN_LINE,
-      paint: { 'line-color': '#ffffff', 'line-width': 0.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0, 9, 0.3] } }, before)
+      paint: { 'line-color': ink, 'line-width': 0.6, 'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0, 9, 0.3] } }, before)
     map.addLayer({ id: COUNTY_LINE, type: 'line', source: COUNTY_LINE,
-      paint: { 'line-color': '#ffffff', 'line-opacity': 0.45, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.8, 11, 1.6] } }, before)
+      paint: { 'line-color': ink, 'line-opacity': 0.45, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.8, 11, 1.6] } }, before)
     map.addLayer({ id: COUNTY_SELECTED, type: 'line', source: COUNTY, filter: selectedCounty(useStore.getState().county),
-      paint: { 'line-color': '#ffffff', 'line-width': 2 } }, before)
+      paint: { 'line-color': ink, 'line-width': 2 } }, before)
     map.addLayer({ id: SELECTED, type: 'line', source: TOWN_HIT, filter: selected(useStore.getState().town),
       paint: { 'line-color': '#3b82f6', 'line-width': 2.5 } }, before)
     return () => {
@@ -46,7 +48,7 @@ export default function Boundaries({ map }: { map: MlMap }) {
       removeLayerAndSource(map, TOWN_LINE)
       removeLayerAndSource(map, TOWN_HIT)
     }
-  }, [map, ready, shapes.data, lines.data])
+  }, [map, ready, shapes.data, lines.data, ink])
 
   useEffect(() => {
     if (ready) map.setFilter(SELECTED, selected(town))
