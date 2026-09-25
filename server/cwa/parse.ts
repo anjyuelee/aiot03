@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- CWA JSON is external, shapes verified by fixtures */
-import type { Bounds, ForecastSlot, ImageKind, ImageOverlay, Town, Typhoon, TyphoonFix, Warning, WeekSlot } from '../../shared/types.js'
+import type {
+  Bounds, Earthquake, ForecastSlot, ImageKind, ImageOverlay, QuakeCounty, QuakeStation, Town, Typhoon, TyphoonFix, Warning, WeekSlot,
+} from '../../shared/types.js'
 
 export interface StationRow { id: string; name: string; county: string; town: string; lat: number; lon: number }
 export interface WeatherObsRow { stationId: string; obsTime: string; temp: number | null; humidity: number | null; windSpeed: number | null; windDir: number | null }
@@ -218,6 +220,53 @@ export function parseWarnings(json: any): Warning[] {
         end: toTaipeiIso(h.validTime?.endTime),
       })
     }
+  }
+  return out
+}
+
+function quakeStation(s: any): QuakeStation | null {
+  const lat = num(s.StationLatitude)
+  const lon = num(s.StationLongitude)
+  if (lat == null || lon == null) return null
+  return { id: s.StationID, name: s.StationName, lat, lon, intensity: s.SeismicIntensity }
+}
+
+const isStation = (s: QuakeStation | null): s is QuakeStation => s != null
+
+/** 「最大震度N級地區」摘要沒有測站、內容與逐縣市項目重複，只取有測站的項目 */
+function quakeCounties(areas: any[] | undefined): QuakeCounty[] {
+  return (areas ?? []).filter(a => a.EqStation?.length).map(a => ({
+    county: a.CountyName,
+    intensity: a.AreaIntensity,
+    stations: a.EqStation.map(quakeStation).filter(isStation),
+  }))
+}
+
+/** 取括號內「位於…」的地名；沒有括號時用整串 */
+function quakeLocation(s: unknown): string {
+  const text = typeof s === 'string' ? s.replace(/\s+/g, ' ').trim() : ''
+  return /[(（]位於(.+?)[)）]/.exec(text)?.[1] ?? text
+}
+
+/** numbered：顯著有感報告才有編號，小區域報告一律 115000，不保留 */
+export function parseEarthquakes(json: any, numbered: boolean): Earthquake[] {
+  const out: Earthquake[] = []
+  for (const q of json.records?.Earthquake ?? []) {
+    const info = q.EarthquakeInfo
+    const time = toTaipeiIso(info?.OriginTime)
+    const lat = num(info?.Epicenter?.EpicenterLatitude)
+    const lon = num(info?.Epicenter?.EpicenterLongitude)
+    const depth = num(info?.FocalDepth)
+    const magnitude = num(info?.EarthquakeMagnitude?.MagnitudeValue)
+    if (!time || lat == null || lon == null || depth == null || magnitude == null) continue
+    out.push({
+      id: time,
+      no: numbered ? num(q.EarthquakeNo) : null,
+      time, lat, lon, depth, magnitude,
+      location: quakeLocation(info.Epicenter.Location),
+      counties: quakeCounties(q.Intensity?.ShakingArea),
+      web: q.Web ?? '',
+    })
   }
   return out
 }

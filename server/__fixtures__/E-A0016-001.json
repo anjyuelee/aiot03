@@ -1,0 +1,164 @@
+{
+  "success": "true",
+  "result": {
+    "resource_id": "E-A0016-001"
+  },
+  "records": {
+    "datasetDescription": "地震報告",
+    "Earthquake": [
+      {
+        "IssueTime": "2026-09-25T01:15:34+08:00",
+        "ValidTime": {
+          "EndTime": "2026-09-25T09:15:34+08:00"
+        },
+        "EarthquakeNo": 115000,
+        "ReportType": "地震報告",
+        "ReportColor": "綠色",
+        "ReportContent": "09/25-01:01新竹市香山區發生規模2.6有感地震，最大震度苗栗縣竹南、新竹縣竹東1級。",
+        "ReportImageURI": "https://scweb.cwa.gov.tw/webdata/OLDEQ/202609/2026092501012326_H.png",
+        "ReportRemark": "本報告係中央氣象署地震觀測網即時地震資料地震速報之結果。",
+        "Web": "https://scweb.cwa.gov.tw/zh-tw/earthquake/details/2026092501012326",
+        "EarthquakeInfo": {
+          "OriginTime": "2026-09-25T01:01:23+08:00",
+          "Source": "中央氣象署",
+          "FocalDepth": 5.7,
+          "Epicenter": {
+            "Location": "新竹市政府南南西方  7.6  公里 (位於新竹市香山區)",
+            "EpicenterLatitude": 24.75,
+            "EpicenterLongitude": 120.94
+          },
+          "EarthquakeMagnitude": {
+            "MagnitudeType": "芮氏規模",
+            "MagnitudeValue": 2.6
+          }
+        },
+        "Intensity": {
+          "ShakingArea": [
+            {
+              "AreaDesc": "苗栗縣地區",
+              "CountyName": "苗栗縣",
+              "InfoStatus": "observe",
+              "AreaIntensity": "1級",
+              "EqStation": [
+                {
+                  "StationName": "竹南",
+                  "StationID": "NJN",
+                  "InfoStatus": "observe",
+                  "BackAzimuth": 44.72,
+                  "EpicenterDistance": 9.59,
+                  "SeismicIntensity": "1級",
+                  "StationLatitude": 24.684,
+                  "StationLongitude": 120.87
+                }
+              ]
+            },
+            {
+              "AreaDesc": "新竹縣地區",
+              "CountyName": "新竹縣",
+              "InfoStatus": "observe",
+              "AreaIntensity": "1級",
+              "EqStation": [
+                {
+                  "StationName": "竹東",
+                  "StationID": "NJD",
+                  "InfoStatus": "observe",
+                  "BackAzimuth": 273.86,
+                  "EpicenterDistance": 15.32,
+                  "SeismicIntensity": "1級",
+                  "StationLatitude": 24.736,
+                  "StationLongitude": 121.088
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "IssueTime": "2026-09-24T05:59:35+08:00",
+        "ValidTime": {
+          "EndTime": "2026-09-24T13:59:35+08:00"
+        },
+        "EarthquakeNo": 115000,
+        "ReportType": "地震報告",
+        "ReportColor": "綠色",
+        "ReportContent": "09/24-05:57嘉義市東區發生規模3.4有感地震，最大震度嘉義市3級。",
+        "ReportImageURI": "https://scweb.cwa.gov.tw/webdata/OLDEQ/202609/2026092405570534_H.png",
+        "ReportRemark": "本報告係中央氣象署地震觀測網即時地震資料地震速報之結果。",
+        "Web": "https://scweb.cwa.gov.tw/zh-tw/earthquake/details/2026092405570534",
+        "EarthquakeInfo": {
+          "OriginTime": "2026-09-24T05:57:05+08:00",
+          "Source": "中央氣象署",
+          "FocalDepth": 7.3,
+          "Epicenter": {
+            "Location": "嘉義市政府北方  2.1  公里 (位於嘉義市東區)",
+            "EpicenterLatitude": 23.5,
+            "EpicenterLongitude": 120.46
+          },
+          "EarthquakeMagnitude": {
+            "MagnitudeType": "芮氏規模",
+            "MagnitudeValue": 3.4
+          }
+        },
+        "Intensity": {
+          "ShakingArea": [
+            {
+              "AreaDesc": "嘉義市地區",
+              "CountyName": "嘉義市",
+              "InfoStatus": "observe",
+              "AreaIntensity": "3級",
+              "EqStation": [
+                {
+                  "StationName": "嘉義市",
+                  "StationID": "CHY",
+                  "InfoStatus": "observe",
+                  "BackAzimuth": 82.02,
+                  "EpicenterDistance": 2.56,
+                  "SeismicIntensity": "3級",
+                  "StationLatitude": 23.496,
+                  "StationLongitude": 120.433
+                }
+              ]
+            },
+            {
+              "AreaDesc": "嘉義縣地區",
+              "CountyName": "嘉義縣",
+              "InfoStatus": "observe",
+              "AreaIntensity": "2級",
+              "EqStation": [
+                {
+                  "StationName": "太保市",
+                  "StationID": "CHY1",
+                  "InfoStatus": "observe",
+                  "BackAzimuth": 74.24,
+                  "EpicenterDistance": 17.36,
+                  "SeismicIntensity": "2級",
+                  "StationLatitude": 23.457,
+                  "StationLongitude": 120.294
+                },
+                {
+                  "StationName": "義竹",
+                  "StationID": "CHN8",
+                  "InfoStatus": "observe",
+                  "BackAzimuth": 54.86,
+                  "EpicenterDistance": 29.34,
+                  "SeismicIntensity": "2級",
+                  "StationLatitude": 23.347,
+                  "StationLongitude": 120.223
+                },
+                {
+                  "StationName": "民雄",
+                  "StationID": "CHN2",
+                  "BackAzimuth": 205.65,
+                  "EpicenterDistance": 3.99,
+                  "SeismicIntensity": "1級",
+                  "StationLatitude": 23.532,
+                  "StationLongitude": 120.474
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

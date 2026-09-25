@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../__fixtures__/load.js'
 import {
-  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseTyphoons, parseWarnings,
+  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseTyphoons, parseWarnings, parseEarthquakes,
 } from './parse.js'
 
 describe('num', () => {
@@ -159,5 +159,49 @@ describe('parseWarnings', () => {
     const quiet = { records: { location: [{ locationName: '宜蘭縣', geocode: 10002, hazardConditions: { hazards: [] } }] } }
     expect(parseWarnings(quiet)).toEqual([])
     expect(parseWarnings({ records: {} })).toEqual([])
+  })
+})
+
+describe('parseEarthquakes', () => {
+  const significant = parseEarthquakes(fixture('E-A0015-001.json'), true)
+  const local = parseEarthquakes(fixture('E-A0016-001.json'), false)
+
+  it('keeps report numbers only for significant quakes', () => {
+    expect(significant.map(q => q.no)).toEqual([115064, 115063])
+    expect(local.map(q => q.no)).toEqual([null, null])
+  })
+
+  it('maps the epicentre, time and short location', () => {
+    expect(significant[0]).toMatchObject({
+      id: '2026-09-22T05:16:13+08:00', time: '2026-09-22T05:16:13+08:00',
+      lat: 23.21, lon: 120.54, depth: 7.5, magnitude: 4.2, location: '臺南市楠西區',
+      web: 'https://scweb.cwa.gov.tw/zh-tw/earthquake/details/2026064',
+    })
+    expect(significant[1].location).toBe('臺灣東南部海域')
+    expect(local.map(q => q.location)).toEqual(['新竹市香山區', '嘉義市東區'])
+  })
+
+  it('keeps per-county areas with their stations and skips the summary areas', () => {
+    expect(significant[0].counties.map(c => `${c.county} ${c.intensity}`)).toEqual(['臺南市 4級', '嘉義縣 3級', '高雄市 1級'])
+    expect(significant[0].counties[0].stations[0]).toEqual({ id: 'SNS', name: '曾文', lat: 23.22, lon: 120.497, intensity: '4級' })
+    // 民雄站沒有 InfoStatus，照樣保留
+    expect(significant[0].counties[1].stations.map(s => s.name)).toEqual(['大埔', '番路', '民雄'])
+  })
+
+  it('falls back to the whole location text and skips unusable reports and stations', () => {
+    const json = fixture('E-A0015-001.json')
+    const [a, b] = json.records.Earthquake
+    a.EarthquakeInfo.Epicenter.Location = '臺灣東部海域   外海'
+    a.Intensity.ShakingArea[0].EqStation[0].StationLatitude = ''
+    b.EarthquakeInfo.OriginTime = ''
+    const list = parseEarthquakes(json, true)
+    expect(list).toHaveLength(1)
+    expect(list[0].location).toBe('臺灣東部海域 外海')
+    expect(list[0].counties[0].stations.map(s => s.name)).toEqual(['楠西', '白河'])
+  })
+
+  it('returns an empty list without reports', () => {
+    expect(parseEarthquakes({ records: {} }, true)).toEqual([])
+    expect(parseEarthquakes({ records: { Earthquake: [] } }, false)).toEqual([])
   })
 })

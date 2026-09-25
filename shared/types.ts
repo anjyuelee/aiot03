@@ -121,3 +121,42 @@ export interface Warning {
   start: string | null
   end: string | null
 }
+
+export interface QuakeStation {
+  /** StationID，例：SNS */
+  id: string
+  name: string
+  lat: number
+  lon: number
+  /** 原字串，例：4級、5弱 */
+  intensity: string
+}
+
+export interface QuakeCounty {
+  county: string
+  /** 該縣市最大震度，原字串 */
+  intensity: string
+  /** CWA 原順序 */
+  stations: QuakeStation[]
+}
+
+export interface Earthquake {
+  /** OriginTime（+08:00 ISO）；小區域報告的 EarthquakeNo 都是 115000，無法當 id */
+  id: string
+  /** 顯著有感地震編號（例：115064）；小區域為 null */
+  no: number | null
+  /** 發震時間，+08:00 ISO */
+  time: string
+  lat: number
+  lon: number
+  /** 震源深度 km */
+  depth: number
+  /** 芮氏規模 */
+  magnitude: number
+  /** 括號內「位於…」的地名，例：臺南市楠西區、臺灣東部海域；沒有括號時為整串（連續空白壓成一個） */
+  location: string
+  /** 逐縣市項目，CWA 原順序；不含「最大震度N級地區」摘要 */
+  counties: QuakeCounty[]
+  /** CWA 報告網頁 */
+  web: string
+}
