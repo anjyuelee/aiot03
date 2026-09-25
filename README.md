@@ -9,7 +9,7 @@
 | 溫度熱圖（即時測站 IDW 內插） | 風場粒子動畫 |
 |---|---|
 | ![溫度](docs/screenshots/temp.png) | ![風](docs/screenshots/wind.png) |
-| **雷達回波** | **衛星雲圖** |
+| **雷達回波** | **衛星雲圖（色調強化）** |
 | ![雷達](docs/screenshots/radar.png) | ![衛星](docs/screenshots/satellite.png) |
 
 | 鄉鎮預報卡片（72 小時曲線＋一週預報） | 手機版 |
