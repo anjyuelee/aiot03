@@ -2,8 +2,8 @@ import type { DB } from './db.js'
 import type { ImageKind } from '../shared/types.js'
 import { cwa, type Fetcher } from './cwa/client.js'
 import { parseSatelliteKmz } from './cwa/kmz.js'
-import { parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseTyphoons, parseWeatherStations } from './cwa/parse.js'
-import { logFetch, replaceForecasts, replaceObservations, replaceSatelliteTiles, replaceTyphoons, upsertImage } from './repo.js'
+import { parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseTyphoons, parseWarnings, parseWeatherStations } from './cwa/parse.js'
+import { logFetch, replaceForecasts, replaceObservations, replaceSatelliteTiles, replaceTyphoons, replaceWarnings, upsertImage } from './repo.js'
 
 // F-D0047-001 起每 4 號一個縣市：+0 為 3 天預報、+2 為一週預報
 const countyIds = (offset: number) =>
@@ -64,4 +64,12 @@ export async function syncImage(db: DB, kind: ImageKind, f: Fetcher = cwa): Prom
 export async function syncTyphoons(db: DB, f: Fetcher = cwa): Promise<void> {
   replaceTyphoons(db, parseTyphoons(await f.dataset('W-C0034-005')))
   logFetch(db, 'typhoon', now())
+}
+
+// 無特報時 CWA 仍回傳 22 縣市、各自 hazards 為空，照樣清空舊資料；連縣市都沒有則視為異常回應
+export async function syncWarnings(db: DB, f: Fetcher = cwa): Promise<void> {
+  const json = await f.dataset('W-C0033-001')
+  if (!json.records?.location?.length) throw new Error('CWA returned no warning locations')
+  replaceWarnings(db, parseWarnings(json))
+  logFetch(db, 'warnings', now())
 }

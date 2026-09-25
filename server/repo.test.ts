@@ -4,10 +4,10 @@ import { openDb, type DB } from './db.js'
 import {
   replaceObservations, listObservations, replaceForecasts, listTowns, getTownForecast,
   listGridTimes, getGrid, upsertImage, getImage, logFetch, getFetchedAt,
-  replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile,
+  replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile, replaceWarnings, listWarnings,
 } from './repo.js'
 import type { Bounds } from '../shared/types.js'
-import { parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage } from './cwa/parse.js'
+import { parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseWarnings } from './cwa/parse.js'
 
 let db: DB
 beforeEach(() => { db = openDb(':memory:') })
@@ -79,5 +79,20 @@ describe('images & fetch log', () => {
     expect(getFetchedAt(db, 'observations')).toBeNull()
     logFetch(db, 'observations', '2026-09-23T11:00:00.000Z')
     expect(getFetchedAt(db, 'observations')).toBe('2026-09-23T11:00:00.000Z')
+  })
+})
+
+describe('warnings', () => {
+  it('replaces the whole list and reads it back sorted by county then phenomena', () => {
+    const list = parseWarnings(fixture('W-C0033-001.json'))
+    replaceWarnings(db, [list[0]])
+    replaceWarnings(db, list)
+    const rows = listWarnings(db)
+    expect(rows.map(w => `${w.countyCode} ${w.phenomena}`)).toEqual(['09007 濃霧', '10002 大雨', '10002 陸上強風', '10015 豪雨', '63000 大雨'])
+    expect(rows[1]).toEqual({
+      countyCode: '10002', county: '宜蘭縣', phenomena: '大雨', significance: '特報',
+      start: '2026-09-25T05:30:00+08:00', end: '2026-09-25T17:30:00+08:00',
+    })
+    expect(rows[0].end).toBeNull()
   })
 })

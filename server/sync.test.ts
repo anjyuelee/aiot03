@@ -4,8 +4,8 @@ import { fixture } from './__fixtures__/load.js'
 import { sampleKmz } from './__fixtures__/kmz.js'
 import { openDb, type DB } from './db.js'
 import type { Fetcher } from './cwa/client.js'
-import { syncObservations, syncForecast, syncImage, syncTyphoons } from './sync.js'
-import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons } from './repo.js'
+import { syncObservations, syncForecast, syncImage, syncTyphoons, syncWarnings } from './sync.js'
+import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons, listWarnings } from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
 
@@ -129,5 +129,38 @@ describe('syncTyphoons', () => {
     await syncTyphoons(db, withTyphoons(fixture('W-C0034-005.json')))
     await syncTyphoons(db, withTyphoons({ success: 'true', records: {} }))
     expect(listTyphoons(db)).toEqual([])
+  })
+})
+
+describe('syncWarnings', () => {
+  const withWarnings = (json: unknown): Fetcher => ({
+    async dataset(id) {
+      if (id === 'W-C0033-001') return json
+      throw new Error(`unexpected dataset ${id}`)
+    },
+    file: async () => { throw new Error('unexpected file') },
+    bytes: noBytes,
+  })
+
+  it('stores warnings and logs the fetch', async () => {
+    await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
+    expect(listWarnings(db)).toHaveLength(5)
+    expect(getFetchedAt(db, 'warnings')).not.toBeNull()
+  })
+
+  it('clears old warnings when none are active', async () => {
+    await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
+    const quiet = fixture('W-C0033-001.json')
+    for (const loc of quiet.records.location) loc.hazardConditions.hazards = []
+    await syncWarnings(db, withWarnings(quiet))
+    expect(listWarnings(db)).toEqual([])
+  })
+
+  it('refuses to wipe warnings when the response has no locations', async () => {
+    await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
+    const fetchedAt = getFetchedAt(db, 'warnings')
+    await expect(syncWarnings(db, withWarnings({ success: 'true', records: { location: [] } }))).rejects.toThrow('no warning locations')
+    expect(listWarnings(db)).toHaveLength(5)
+    expect(getFetchedAt(db, 'warnings')).toBe(fetchedAt)
   })
 })

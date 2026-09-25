@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { openDb } from '../server/db.js'
-import { syncForecast, syncImage, syncObservations, syncTyphoons } from '../server/sync.js'
+import { syncForecast, syncImage, syncObservations, syncTyphoons, syncWarnings } from '../server/sync.js'
 
 const FILE = 'data/weather.db'
 
@@ -19,6 +19,7 @@ const steps: [string, () => Promise<void>][] = [
   ['radar', () => syncImage(db, 'radar')],
   ['satellite', () => syncImage(db, 'satellite')],
   ['typhoon', () => syncTyphoons(db)],
+  ['warnings', () => syncWarnings(db)],
 ]
 // 單一資料集失敗不中斷 build：執行期會再向 CWA 補抓
 for (const [name, run] of steps) {
@@ -31,5 +32,5 @@ for (const [name, run] of steps) {
 }
 
 const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n
-console.log(Object.fromEntries(['stations', 'observations', 'towns', 'forecast_3h', 'forecast_week', 'images', 'satellite_tiles', 'typhoons'].map(t => [t, count(t)])))
+console.log(Object.fromEntries(['stations', 'observations', 'towns', 'forecast_3h', 'forecast_week', 'images', 'satellite_tiles', 'typhoons', 'warnings'].map(t => [t, count(t)])))
 db.close()

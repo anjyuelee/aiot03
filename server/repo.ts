@@ -1,5 +1,5 @@
 import type { DB } from './db.js'
-import type { Bounds, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, WeekSlot } from '../shared/types.js'
+import type { Bounds, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, Warning, WeekSlot } from '../shared/types.js'
 import type { RainObsRow, Slot3hRow, StationRow, WeatherObsRow, WeekRow } from './cwa/parse.js'
 import type { SatelliteTileRow } from './cwa/kmz.js'
 
@@ -110,6 +110,20 @@ export function replaceTyphoons(db: DB, list: Typhoon[]): void {
 
 export function listTyphoons(db: DB): Typhoon[] {
   return (db.prepare('SELECT json FROM typhoons ORDER BY id').all() as { json: string }[]).map(r => JSON.parse(r.json))
+}
+
+export function replaceWarnings(db: DB, list: Warning[]): void {
+  const insert = db.prepare(`INSERT OR REPLACE INTO warnings (county_code, county, phenomena, significance, start_time, end_time)
+    VALUES (@countyCode, @county, @phenomena, @significance, @start, @end)`)
+  db.transaction(() => {
+    db.prepare('DELETE FROM warnings').run()
+    for (const w of list) insert.run(w)
+  })()
+}
+
+export function listWarnings(db: DB): Warning[] {
+  return db.prepare(`SELECT county_code AS countyCode, county, phenomena, significance, start_time AS start, end_time AS "end"
+    FROM warnings ORDER BY county_code, phenomena`).all() as Warning[]
 }
 
 export function logFetch(db: DB, dataset: string, at: string): void {
