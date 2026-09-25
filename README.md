@@ -24,6 +24,10 @@
 |---|---|
 | ![行政區](docs/screenshots/admin.png) | ![逐層選取](docs/screenshots/admin-town.png) |
 
+| 底圖切換（右下角：深色／淺色／街道／衛星／地形；圖為衛星底圖＋雷達） |
+|---|
+| ![底圖切換](docs/screenshots/basemap.png) |
+
 ## 功能
 
 - **八種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風、行政區
