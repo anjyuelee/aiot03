@@ -193,4 +193,13 @@ describe('syncEarthquakes', () => {
     expect(listEarthquakes(db)).toHaveLength(4)
     expect(getFetchedAt(db, 'earthquakes')).toBe(fetchedAt)
   })
+
+  it('keeps the report number when both datasets report the same origin time', async () => {
+    const local = fixture('E-A0016-001.json')
+    local.records.Earthquake[0].EarthquakeInfo.OriginTime = '2026-09-22T05:16:13+08:00'
+    await syncEarthquakes(db, withQuakes(fixture('E-A0015-001.json'), local))
+    const list = listEarthquakes(db)
+    expect(list).toHaveLength(3)
+    expect(list.find(q => q.id === '2026-09-22T05:16:13+08:00')!.no).toBe(115064)
+  })
 })

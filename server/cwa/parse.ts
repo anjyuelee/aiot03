@@ -228,16 +228,18 @@ function quakeStation(s: any): QuakeStation | null {
   const lat = num(s.StationLatitude)
   const lon = num(s.StationLongitude)
   if (lat == null || lon == null) return null
-  return { id: s.StationID, name: s.StationName, lat, lon, intensity: s.SeismicIntensity }
+  return {
+    id: String(s.StationID ?? ''), name: String(s.StationName ?? ''), lat, lon, intensity: String(s.SeismicIntensity ?? ''),
+  }
 }
 
 const isStation = (s: QuakeStation | null): s is QuakeStation => s != null
 
-/** 「最大震度N級地區」摘要沒有測站、內容與逐縣市項目重複，只取有測站的項目 */
+/** 「最大震度N級地區」摘要沒有測站、內容與逐縣市項目重複，只取有測站的項目；字串欄位缺值時給空字串，前端才不會在渲染時出錯 */
 function quakeCounties(areas: any[] | undefined): QuakeCounty[] {
   return (areas ?? []).filter(a => a.EqStation?.length).map(a => ({
-    county: a.CountyName,
-    intensity: a.AreaIntensity,
+    county: String(a.CountyName ?? ''),
+    intensity: String(a.AreaIntensity ?? ''),
     stations: a.EqStation.map(quakeStation).filter(isStation),
   }))
 }
@@ -265,7 +267,7 @@ export function parseEarthquakes(json: any, numbered: boolean): Earthquake[] {
       time, lat, lon, depth, magnitude,
       location: quakeLocation(info.Epicenter.Location),
       counties: quakeCounties(q.Intensity?.ShakingArea),
-      web: q.Web ?? '',
+      web: String(q.Web ?? ''),
     })
   }
   return out

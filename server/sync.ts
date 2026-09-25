@@ -82,6 +82,7 @@ export async function syncWarnings(db: DB, f: Fetcher = cwa): Promise<void> {
 export async function syncEarthquakes(db: DB, f: Fetcher = cwa): Promise<void> {
   const [significant, local] = await Promise.all([f.dataset('E-A0015-001'), f.dataset('E-A0016-001')])
   if (!significant.records?.Earthquake?.length || !local.records?.Earthquake?.length) throw new Error('CWA returned no earthquake reports')
-  replaceEarthquakes(db, [...parseEarthquakes(significant, true), ...parseEarthquakes(local, false)])
+  // 同一發震時間兩邊都有時，後寫入者覆蓋前者：顯著有感放後面，保留它的編號
+  replaceEarthquakes(db, [...parseEarthquakes(local, false), ...parseEarthquakes(significant, true)])
   logFetch(db, 'earthquakes', now())
 }

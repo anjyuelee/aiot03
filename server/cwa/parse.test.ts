@@ -204,4 +204,16 @@ describe('parseEarthquakes', () => {
     expect(parseEarthquakes({ records: {} }, true)).toEqual([])
     expect(parseEarthquakes({ records: { Earthquake: [] } }, false)).toEqual([])
   })
+
+  it('turns missing string fields into empty strings', () => {
+    const json = fixture('E-A0015-001.json')
+    const area = json.records.Earthquake[0].Intensity.ShakingArea[0]
+    delete area.AreaIntensity
+    delete area.EqStation[0].SeismicIntensity
+    delete json.records.Earthquake[0].Web
+    const [q] = parseEarthquakes(json, true)
+    expect(q.counties[0].intensity).toBe('')
+    expect(q.counties[0].stations[0].intensity).toBe('')
+    expect(q.web).toBe('')
+  })
 })
