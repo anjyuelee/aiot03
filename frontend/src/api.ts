@@ -1,5 +1,5 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { feature, mesh } from 'topojson-client'
 import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
@@ -28,14 +28,26 @@ export const useTowns = () =>
 export const useTownForecast = (town: string | null) =>
   useQuery({ queryKey: ['forecast', town], queryFn: () => get<TownForecast>(`/api/forecast?town=${encodeURIComponent(town!)}`), enabled: !!town })
 
+const gridQuery = (time: string | null) => ({
+  queryKey: ['grid', time],
+  queryFn: () => get<ForecastGrid>(`/api/forecast-grid${time ? `?time=${encodeURIComponent(time)}` : ''}`),
+})
+
 export const useForecastGrid = (time: string | null) =>
   useQuery({
-    queryKey: ['grid', time],
-    queryFn: () => get<ForecastGrid>(`/api/forecast-grid${time ? `?time=${encodeURIComponent(time)}` : ''}`),
+    ...gridQuery(time),
     placeholderData: keepPreviousData,
     // 時段清單定期刷新，已結束的時段才會從時間軸移除
     refetchInterval: time ? false : TEN_MIN,
   })
+
+/** 播放時預先載入所有時段，動畫才不會停下來等資料 */
+export function usePrefetchGrids(times: string[], enabled: boolean) {
+  const qc = useQueryClient()
+  useEffect(() => {
+    if (enabled) times.forEach(t => qc.prefetchQuery(gridQuery(t)))
+  }, [qc, times, enabled])
+}
 
 /** 尚未結束的 3 小時時段，最多 24 格（72 小時） */
 export function useFutureTimes(): string[] {

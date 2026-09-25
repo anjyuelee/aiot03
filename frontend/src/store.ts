@@ -9,6 +9,8 @@ interface State {
   layer: LayerId
   t: number
   town: string | null
+  /** 時間軸連續位置（播放、拖曳時有小數）；t 是四捨五入後的時段，寫進網址 */
+  pos: number
   /** 逐層選取時目前所在的縣市；選了鄉鎮就跟著變成它所屬的縣市 */
   county: string | null
   playing: boolean
@@ -16,6 +18,7 @@ interface State {
   basemap: BasemapId
   setLayer: (layer: LayerId) => void
   setT: (t: number) => void
+  setPos: (pos: number) => void
   selectTown: (town: string | null) => void
   selectCounty: (county: string | null) => void
   setPlaying: (playing: boolean) => void
@@ -27,13 +30,15 @@ const initial = parseUrlState(window.location.search)
 
 export const useStore = create<State>(set => ({
   ...initial,
+  pos: initial.t,
   county: initial.town && countyOf(initial.town),
   playing: false,
   cloudMode: 'enhanced',
   basemap: 'dark',
   // 雷達/衛星沒有未來時段，切換時回到「現在」
-  setLayer: layer => set(s => ({ layer, t: LAYERS[layer].future ? s.t : 0, playing: LAYERS[layer].future ? s.playing : false })),
-  setT: t => set({ t }),
+  setLayer: layer => set(LAYERS[layer].future ? { layer } : { layer, t: 0, pos: 0, playing: false }),
+  setT: t => set({ t, pos: t }),
+  setPos: pos => set({ pos, t: Math.round(pos) }),
   selectTown: town => set(town ? { town, county: countyOf(town) } : { town }),
   selectCounty: county => set({ county, town: null }),
   setPlaying: playing => set({ playing }),
@@ -41,6 +46,8 @@ export const useStore = create<State>(set => ({
   setBasemap: basemap => set({ basemap }),
 }))
 
-useStore.subscribe(({ layer, t, town }) => {
+// 播放時 pos 每幀都變，只在網址相關的欄位改變時才寫網址（瀏覽器會限制 replaceState 頻率）
+useStore.subscribe(({ layer, t, town }, prev) => {
+  if (layer === prev.layer && t === prev.t && town === prev.town) return
   window.history.replaceState(null, '', toSearch({ layer, t, town }))
 })

@@ -61,22 +61,23 @@ button:disabled { opacity: 0.4; cursor: default; }
 .timeline { position: fixed; left: 50%; bottom: var(--gap); transform: translateX(-50%); width: min(760px, calc(100% - 2 * var(--gap))); z-index: 3; padding: 10px 14px; }
 .timeline-row { display: flex; align-items: center; gap: 12px; }
 .play { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); }
-/* 自訂滑桿讓 thumb 固定 16px，下方刻度左右內縮 8px 才會對齊 thumb 中心 */
-.track { flex: 1; min-width: 0; }
-.track input[type='range'] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 20px; margin: 0; background: none; cursor: pointer; }
-.track input[type='range']:disabled { cursor: default; }
-.track input[type='range']::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent) var(--pct), rgba(255, 255, 255, 0.18) var(--pct)); }
-.track input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent) var(--pct), rgba(255, 255, 255, 0.18) var(--pct)); }
-.track input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
-.track input[type='range']::-moz-range-thumb { box-sizing: border-box; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
-.ruler { position: relative; height: 20px; margin: 0 8px; }
+/* 自訂滑桿：軌道與下方刻度左右內縮 8px，thumb 中心才會對齊刻度 */
+.track { flex: 1; min-width: 0; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.track:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.rail-area { position: relative; margin: 0 8px; padding-top: 28px; }
+.rail { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.rail .fill { height: 100%; background: var(--accent); }
+.thumb { position: absolute; bottom: -6px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); box-sizing: border-box; }
+.bubble { position: absolute; top: 0; padding: 3px 8px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 12px; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bubble b { font-size: 13px; }
+.bubble span { opacity: 0.85; }
+.ruler { position: relative; height: 20px; margin: 8px 8px 0; }
 .tick { position: absolute; top: 0; width: 1px; height: 4px; background: rgba(255, 255, 255, 0.25); transform: translateX(-50%); }
 .tick.day { height: 18px; background: rgba(255, 255, 255, 0.45); }
 .day-label { position: absolute; top: 6px; padding-left: 5px; font-size: 11px; line-height: 1; color: var(--muted); white-space: nowrap; }
 .day-label.on { color: var(--text); font-weight: 600; }
-.time-label { flex: none; min-width: 104px; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.time-label strong { font-size: 17px; }
-.time-label small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.timeline.compact { width: min(520px, calc(100% - 2 * var(--gap))); }
+.timeline.compact .cloud-mode { margin-top: 0; }
 .legend { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
 .legend-bar { flex: 1; height: 8px; border-radius: 4px; }
 .cloud-mode { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }

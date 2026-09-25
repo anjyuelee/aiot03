@@ -11,6 +11,7 @@ import { windToUV, sampleField, type WindField } from './wind'
 import { parseUrlState, toSearch } from './urlState'
 import { sourceRowForMercRow } from './reproject'
 import { cloudAlpha, enhancedColor } from './clouds'
+import { advancePos, lerpValues } from './playback'
 import type { Town, WeekSlot } from '../../../shared/types'
 
 describe('mercator', () => {
@@ -217,5 +218,26 @@ describe('enhancedColor', () => {
     expect(r2).toBeGreaterThan(g2)
     expect(r2).toBeGreaterThan(b2)
     expect(a2).toBe(255)
+  })
+})
+
+describe('playback', () => {
+  it('interpolates town values between two slots', () => {
+    const a = new Map([['x', 10], ['y', null], ['z', 20]])
+    const b = new Map([['x', 20], ['y', 5], ['z', null]])
+    const v = lerpValues(a, b, 0.25)
+    expect(v.get('x')).toBe(12.5)
+    // 任一端缺值時取有值的那端，避免閃爍成空白
+    expect(v.get('y')).toBe(5)
+    expect(v.get('z')).toBe(20)
+  })
+  it('falls back to one side when the other slot is not loaded', () => {
+    const a = new Map([['x', 10]])
+    expect(lerpValues(a, null, 0.5)).toBe(a)
+    expect(lerpValues(null, a, 0.5)).toBe(a)
+  })
+  it('advances and loops back to now at the end', () => {
+    expect(advancePos(1, 500, 4, 1000)).toBeCloseTo(1.5)
+    expect(advancePos(3.9, 500, 4, 1000)).toBe(0)
   })
 })

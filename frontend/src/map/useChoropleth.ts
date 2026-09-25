@@ -8,7 +8,7 @@ const ID = 'choropleth'
 const VALUE: ExpressionSpecification = ['feature-state', 'value']
 
 /** 圖層只建立一次；時間軸切換時只更新 feature-state，不重建圖層 */
-export function useChoropleth(map: MlMap, values: Map<string, number | null> | null, stops: Stops | null) {
+export function useChoropleth(map: MlMap, values: Map<string, number | null> | null, stops: Stops | null, opacity = 1) {
   const shapes = useTownShapes()
   const active = !!values && !!stops && !!shapes.data
 
@@ -29,6 +29,10 @@ export function useChoropleth(map: MlMap, values: Map<string, number | null> | n
     map.setPaintProperty(ID, 'fill-color',
       ['case', ['!=', VALUE, null], fillColorExpr(stops!, VALUE) as ExpressionSpecification, 'rgba(0,0,0,0)'] as ExpressionSpecification)
   }, [map, active, stops])
+
+  useEffect(() => {
+    if (active) map.setPaintProperty(ID, 'fill-opacity', 0.8 * opacity)
+  }, [map, active, opacity])
 
   useEffect(() => {
     if (!active) return
