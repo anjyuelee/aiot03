@@ -112,7 +112,7 @@ export interface Earthquake {
 | `server/cwa/parse.ts` | `parseEarthquakes(json, numbered: boolean): Earthquake[]`。顯著有感傳 `true` 保留 `no`，小區域傳 `false` 設為 `null`。時間用既有 `toTaipeiIso`；時間、震央經緯度、規模、深度任一無效時跳過該筆。只取有 `EqStation` 的 `ShakingArea`；測站經緯度無效時跳過該測站。地名以 `/\(位於(.+?)\)/` 取出。`records.Earthquake` 缺或為空時回傳 `[]` |
 | `server/db.ts` | `CREATE TABLE IF NOT EXISTS earthquakes (id TEXT PRIMARY KEY, json TEXT)` |
 | `server/repo.ts` | `replaceEarthquakes(db, list)`（交易內先清空再寫入，`INSERT OR REPLACE`，同 id 後者覆蓋）、`listEarthquakes(db)`（`ORDER BY id DESC`；id 皆為 +08:00 ISO，字串序即時間序） |
-| `server/sync.ts` | `syncEarthquakes(db, f = cwa)`：`Promise.all` 抓兩個資料集；任一個缺 `records.Earthquake` 陣列即拋錯（整批不寫入，兩者永遠同一版）；合併後 `replaceEarthquakes` → `logFetch(db, 'earthquakes')` |
+| `server/sync.ts` | `syncEarthquakes(db, f = cwa)`：`Promise.all` 抓兩個資料集；任一個的 `records.Earthquake` 缺少或為空陣列即拋錯（CWA 固定回傳最新 16 筆，空清單視為異常回應；整批不寫入，兩者永遠同一版）；合併後 `replaceEarthquakes` → `logFetch(db, 'earthquakes')` |
 | `server/freshness.ts` | `TTL.earthquakes = 5 * MIN`（徽章只看 60 分鐘內，資料要夠新） |
 | `server/service.ts` | `getEarthquakes(): Promise<ApiResponse<Earthquake[]>>` |
 | `api/earthquakes.ts` | `GET`，回傳 `getEarthquakes()`（永遠有值，無 503 分支） |
@@ -176,13 +176,13 @@ export interface Earthquake {
 
 ## 6. 錯誤處理
 
-沿用 `ensureFresh`：CWA 失敗時回傳 SQLite 舊資料並標示 stale（`StatusBadge` 顯示「資料可能非最新」）。從未成功抓取時回傳空陣列（`stale: true`），資訊卡顯示「近期無有感地震資料」、徽章不顯示。兩個資料集任一失敗整批不寫入。單筆報告欄位無效只跳過該筆；測站經緯度無效只跳過該測站。
+沿用 `ensureFresh`：CWA 失敗時回傳 SQLite 舊資料並標示 stale（`StatusBadge` 顯示「資料可能非最新」）。從未成功抓取時回傳空陣列（`stale: true`），資訊卡顯示「近期無有感地震資料」、徽章不顯示。兩個資料集任一失敗或回傳空清單時整批不寫入。單筆報告欄位無效只跳過該筆；測站經緯度無效只跳過該測站。
 
 ## 7. 測試
 
 - `server/cwa/parse.test.ts`：fixture 解析 — 筆數；顯著有感保留 `no`、小區域為 `null`；地名從括號取出、無括號時取整串；摘要項目不進 `counties`；缺 `InfoStatus` 的測站保留；時間無效的報告跳過；`records.Earthquake` 為空回傳 `[]`
-- `server/repo.test.ts`：`replaceEarthquakes` 後 `listEarthquakes` 依時間新到舊、欄位完整還原；再次替換會清掉舊資料
-- `server/sync.test.ts`：兩個資料集合併寫入並記錄 `fetch_log`；任一缺 `records.Earthquake` 時拋錯且舊資料保留
+- `server/repo.test.ts`：`replaceEarthquakes` 後 `listEarthquakes` 依時間新到舊、欄位完整還原；再次替換會清掉舊資料；同一發震時間只留一筆
+- `server/sync.test.ts`：兩個資料集合併寫入並記錄 `fetch_log`；任一缺 `records.Earthquake` 或為空陣列時拋錯且舊資料保留
 - `frontend/src/lib/quakes.test.ts`：`intensityRank` 順序（`4級 < 5弱 < 5強 < 6弱`）與未知字串；`intensityColor` 未知字串退回灰色；`maxIntensity` 取最大、無縣市為 `null`；`quakeBadge` 59 分鐘顯示、61 分鐘不顯示、空清單、無震度時的文字；`quakeBounds`；`fmtQuakeTime`；`toGeoJSON` 只輸出選取地震的測站
 - 手動：本機 `?layer=quake` 確認星號與測站著色、清單與震央點擊切換、`fitBounds`、`<details>` 展開、地震圖層點地圖不觸發縣市選取、淺色底圖的 ink 色；暫時放寬徽章時間窗與強制顯示特報徽章（不 commit）確認兩顆徽章並列時卡片位置；README 補功能說明、架構圖資料集、TTL 表、API 表與截圖 `docs/screenshots/quake.png`
 
