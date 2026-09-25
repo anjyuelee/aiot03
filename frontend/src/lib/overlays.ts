@@ -1,6 +1,6 @@
 import type { Bounds, ImageOverlay, SatelliteOverlay } from '../../../shared/types'
 import { reprojectImage, type CanvasOverlay } from './reproject'
-import { whitenClouds } from './clouds'
+import { styleClouds, type CloudMode } from './clouds'
 
 async function loadImage(url: string): Promise<HTMLImageElement> {
   const img = new Image()
@@ -17,7 +17,7 @@ export async function radarOverlay(o: ImageOverlay): Promise<CanvasOverlay> {
 }
 
 /** 圖塊先拼成一張經緯度影像再整張重投影，各塊分開重投影會在接縫處錯位 */
-export async function satelliteOverlay(sat: SatelliteOverlay): Promise<CanvasOverlay> {
+export async function satelliteOverlay(sat: SatelliteOverlay, mode: CloudMode): Promise<CanvasOverlay> {
   const imgs = await Promise.all(sat.tiles.map(t => loadImage(t.url)))
   const bounds: Bounds = [
     Math.min(...sat.tiles.map(t => t.bounds[0])),
@@ -40,6 +40,6 @@ export async function satelliteOverlay(sat: SatelliteOverlay): Promise<CanvasOve
     ctx.drawImage(imgs[i], x, y, Math.round((e - west) * pxX) - x, Math.round((north - s) * pxY) - y)
   })
   const out = reprojectImage(canvas, bounds)
-  whitenClouds(out.canvas)
+  styleClouds(out.canvas, mode)
   return out
 }

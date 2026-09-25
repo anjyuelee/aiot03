@@ -5,6 +5,7 @@ import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
 import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon } from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
+import type { CloudMode } from './lib/clouds'
 import type { CountyShapes } from './lib/geo'
 
 const FIVE_MIN = 5 * 60_000
@@ -60,10 +61,10 @@ export const useReprojected = (o: ImageOverlay | null) =>
 export const useSatellite = (enabled: boolean) =>
   useQuery({ queryKey: ['satellite'], queryFn: () => get<SatelliteOverlay>('/api/satellite'), enabled, refetchInterval: TEN_MIN })
 
-export const useSatelliteClouds = (s: SatelliteOverlay | null) =>
+export const useSatelliteClouds = (s: SatelliteOverlay | null, mode: CloudMode) =>
   useQuery({
-    queryKey: ['satelliteClouds', s?.obsTime],
-    queryFn: () => satelliteOverlay(s!),
+    queryKey: ['satelliteClouds', s?.obsTime, mode],
+    queryFn: () => satelliteOverlay(s!, mode),
     enabled: !!s,
     staleTime: Infinity,
     gcTime: CANVAS_GC,

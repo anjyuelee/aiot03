@@ -15,6 +15,7 @@ import AdminLayer from './AdminLayer'
 export default function DataLayers({ map }: { map: MlMap }) {
   const layer = useStore(s => s.layer)
   const t = useStore(s => s.t)
+  const cloudMode = useStore(s => s.cloudMode)
   const future = t > 0
   const def = LAYERS[layer]
   const times = useFutureTimes()
@@ -23,7 +24,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
   const radar = useOverlay(layer === 'radar' ? 'radar' : null)
   const image = useReprojected(layer === 'radar' ? radar.data?.data ?? null : null)
   const satellite = useSatellite(layer === 'satellite')
-  const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null)
+  const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null, cloudMode)
   const typhoon = useTyphoons(layer === 'typhoon')
 
   // 熱圖只依欄位與觀測資料而定，時間軸來回切換時重用

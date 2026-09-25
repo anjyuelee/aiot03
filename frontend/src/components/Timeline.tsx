@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
 import { daySegments, fmtMD, relDay, taipeiDate, weekdayOf } from '../lib/format'
 import Legend from './Legend'
+import CloudModeToggle from './CloudModeToggle'
 
 export default function Timeline() {
   const layer = useStore(s => s.layer)
@@ -67,6 +68,7 @@ export default function Timeline() {
         </div>
       </div>
       {scale && <Legend scale={scale} />}
+      {layer === 'satellite' && <CloudModeToggle />}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { fmtClock } from '../lib/format'
 export default function StatusBadge() {
   const layer = useStore(s => s.layer)
   const t = useStore(s => s.t)
+  const cloudMode = useStore(s => s.cloudMode)
   const isRadar = layer === 'radar'
   const isSatellite = layer === 'satellite'
   const isTyphoon = layer === 'typhoon'
@@ -12,7 +13,7 @@ export default function StatusBadge() {
   const radar = useOverlay(isRadar ? 'radar' : null)
   const image = useReprojected(isRadar ? radar.data?.data ?? null : null)
   const satellite = useSatellite(isSatellite)
-  const clouds = useSatelliteClouds(isSatellite ? satellite.data?.data ?? null : null)
+  const clouds = useSatelliteClouds(isSatellite ? satellite.data?.data ?? null : null, cloudMode)
   const typhoon = useTyphoons(isTyphoon)
   const times = useFutureTimes()
   const grid = useForecastGrid(t > 0 ? times[t - 1] ?? null : null)

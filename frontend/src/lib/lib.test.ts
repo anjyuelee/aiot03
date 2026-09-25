@@ -10,7 +10,7 @@ import { wxIcon } from './wx'
 import { windToUV, sampleField, type WindField } from './wind'
 import { parseUrlState, toSearch } from './urlState'
 import { sourceRowForMercRow } from './reproject'
-import { cloudAlpha } from './clouds'
+import { cloudAlpha, enhancedColor } from './clouds'
 import type { Town, WeekSlot } from '../../../shared/types'
 
 describe('mercator', () => {
@@ -196,5 +196,26 @@ describe('cloudAlpha', () => {
     expect(cloudAlpha(185)).toBeGreaterThan(100)
     expect(cloudAlpha(185)).toBeLessThan(155)
     expect(cloudAlpha(150)).toBeLessThan(cloudAlpha(220))
+  })
+})
+
+describe('enhancedColor', () => {
+  it('keeps clear sky transparent', () => {
+    expect(enhancedColor(90)[3]).toBe(0)
+    expect(enhancedColor(130)[3]).toBe(0)
+  })
+  it('shows low clouds as translucent gray', () => {
+    const [r, g, b, a] = enhancedColor(165)
+    expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThan(20)
+    expect(a).toBeGreaterThan(0)
+    expect(a).toBeLessThan(255)
+  })
+  it('colors cold cloud tops from blue to red', () => {
+    const [r1, , b1] = enhancedColor(200)
+    expect(b1).toBeGreaterThan(r1)
+    const [r2, g2, b2, a2] = enhancedColor(242)
+    expect(r2).toBeGreaterThan(g2)
+    expect(r2).toBeGreaterThan(b2)
+    expect(a2).toBe(255)
   })
 })
