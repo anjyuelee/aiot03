@@ -109,10 +109,10 @@ export interface Earthquake {
 
 | 檔案 | 改動 |
 |---|---|
-| `server/cwa/parse.ts` | `parseEarthquakes(json, numbered: boolean): Earthquake[]`。顯著有感傳 `true` 保留 `no`，小區域傳 `false` 設為 `null`。時間用既有 `toTaipeiIso`；時間、震央經緯度、規模、深度任一無效時跳過該筆。只取有 `EqStation` 的 `ShakingArea`；測站經緯度無效時跳過該測站。地名以 `/\(位於(.+?)\)/` 取出。`records.Earthquake` 缺或為空時回傳 `[]` |
+| `server/cwa/parse.ts` | `parseEarthquakes(json, numbered: boolean): Earthquake[]`。顯著有感傳 `true` 保留 `no`，小區域傳 `false` 設為 `null`。時間用既有 `toTaipeiIso`；時間、震央經緯度、規模、深度任一無效時跳過該筆。只取有 `EqStation` 的 `ShakingArea`；測站經緯度無效時跳過該測站。地名以 `/\(位於(.+?)\)/` 取出。`records.Earthquake` 缺或為空時回傳 `[]`；震度、縣市、測站名稱與代碼、報告網址等字串欄位缺值時給空字串 |
 | `server/db.ts` | `CREATE TABLE IF NOT EXISTS earthquakes (id TEXT PRIMARY KEY, json TEXT)` |
 | `server/repo.ts` | `replaceEarthquakes(db, list)`（交易內先清空再寫入，`INSERT OR REPLACE`，同 id 後者覆蓋）、`listEarthquakes(db)`（`ORDER BY id DESC`；id 皆為 +08:00 ISO，字串序即時間序） |
-| `server/sync.ts` | `syncEarthquakes(db, f = cwa)`：`Promise.all` 抓兩個資料集；任一個的 `records.Earthquake` 缺少或為空陣列即拋錯（CWA 固定回傳最新 16 筆，空清單視為異常回應；整批不寫入，兩者永遠同一版）；合併後 `replaceEarthquakes` → `logFetch(db, 'earthquakes')` |
+| `server/sync.ts` | `syncEarthquakes(db, f = cwa)`：`Promise.all` 抓兩個資料集；任一個的 `records.Earthquake` 缺少或為空陣列即拋錯（CWA 固定回傳最新 16 筆，空清單視為異常回應；整批不寫入，兩者永遠同一版）；小區域在前、顯著有感在後合併（同一發震時間以有編號的顯著有感為準）後 `replaceEarthquakes` → `logFetch(db, 'earthquakes')` |
 | `server/freshness.ts` | `TTL.earthquakes = 5 * MIN`（徽章只看 60 分鐘內，資料要夠新） |
 | `server/service.ts` | `getEarthquakes(): Promise<ApiResponse<Earthquake[]>>` |
 | `api/earthquakes.ts` | `GET`，回傳 `getEarthquakes()`（永遠有值，無 503 分支） |
@@ -135,7 +135,8 @@ export interface Earthquake {
 - `INTENSITY_LEGEND`：`1級`～`7級` 九個等級與顏色，給卡片圖例用。
 - `maxIntensity(q): string | null`：各縣市 `intensity` 中 rank 最高者；沒有縣市時為 `null`。
 - `fmtQuakeTime(iso)`：`M/D HH:mm`，直接取字元（CWA 時間固定 +08:00，同 `format.ts` 的做法）。
-- `quakeBadge(list, now): string | null`：`list[0]` 的發震時間距 `now` 在 60 分鐘內（含）時回傳 `地震 M${magnitude} ${location} · 最大 ${max}`，沒有震度時省略「 · 最大 …」；否則或空清單回傳 `null`。
+- `fmtMagnitude(m)`：規模一律一位小數（`5` → `5.0`），徽章與卡片共用。
+- `quakeBadge(list, now): string | null`：`list[0]` 的發震時間距 `now` 在 60 分鐘內（含）時回傳 `地震 M${fmtMagnitude(magnitude)} ${location} · 最大 ${max}`，沒有震度時省略「 · 最大 …」；否則或空清單回傳 `null`。
 - `quakeBounds(q): Bounds`：震央與所有測站的外框。
 - `toGeoJSON(list, selectedId)`：震央點（`role: 'epicenter'`，屬性含 `id`、`magnitude`、`color`＝最大震度色、`selected`）與選取地震的測站點（`role: 'station'`，屬性含 `color`）。
 
@@ -159,15 +160,15 @@ export interface Earthquake {
 
 地震圖層時取代 `LocationCard`（`App.tsx` 依圖層切換）。標題「🫨 有感地震」，下分三塊：
 
-1. **選取的地震**：`M4.2 臺南市楠西區` 為小標題；下方依序為 `fmtQuakeTime`、`深度 7.5 km`、「第 115064 號」或「小區域有感地震」、「CWA 報告 ↗」（`web`，新分頁開啟）。
-2. **各地震度**：每個縣市一個 `<details>`，`summary` 為色點＋縣市名＋震度；展開後每個測站一列（名稱、震度）。下方一條 `INTENSITY_LEGEND` 色階圖例。
+1. **選取的地震**：`M4.2 臺南市楠西區` 為小標題；下方依序為 `fmtQuakeTime`、`深度 7.5 km`、「第 115064 號」或「小區域有感地震」、「CWA 報告 ↗」（`web`，新分頁開啟），`web` 為空時不顯示。
+2. **各地震度**：每個縣市一個 `<details>`（key 含地震 id，切換地震時收合），`summary` 為色點＋縣市名＋震度；展開後每個測站一列（名稱、震度）。下方一條 `INTENSITY_LEGEND` 色階圖例。
 3. **近期地震**：每筆一列按鈕（最大震度色點、`M4.2`、地名、`fmtQuakeTime`），選取中者反白；點了 `selectQuake(id)` 並把卡片捲回頂端。
 
 載入中顯示 skeleton、失敗顯示「無法載入地震資料，請稍後再試。」、空清單顯示「近期無有感地震資料」。
 
 ### 5.5 徽章與狀態
 
-- `frontend/src/components/QuakeBadge.tsx`：放在 `.top-left` 內 `WarningBadge` 之後；`quakeBadge(list, Date.now())` 為 `null` 或目前已是地震圖層時不渲染；為 `button`，點擊 `setLayer('quake')` 並 `selectQuake(null)`。60 分鐘的判斷在每次 refetch（5 分鐘）重新渲染時重算，徽章最多晚 5 分鐘消失，不另加計時器。
+- `frontend/src/components/QuakeBadge.tsx`：放在 `.top-left` 內 `WarningBadge` 之後；`quakeBadge(list, Date.now())` 為 `null` 或目前已是地震圖層時不渲染；為 `button`，點擊 `setLayer('quake')` 並 `selectQuake(null)`。元件同時讀取 `dataUpdatedAt`（資料內容相同時 TanStack Query 不會通知只讀 `data` 的元件），60 分鐘的判斷在每次成功 refetch（約 5 分鐘）時重算，徽章最多晚約 5 分鐘消失，不另加計時器。
 - `frontend/src/components/StatusBadge.tsx`：地震圖層時以 `useEarthquakes()` 的結果顯示「更新於」與 stale 狀態（同颱風、特報）。
 - `frontend/src/styles.css`：
   - `.badge.alert.quake { background: #e8590c; }` 與其 hover 色，和特報的紅色徽章區分。
