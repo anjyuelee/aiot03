@@ -25,6 +25,9 @@ export function maxIntensity(q: Earthquake): string | null {
 /** M/D HH:mm；CWA 時間固定 +08:00，直接取字元避免受瀏覽器時區影響 */
 export const fmtQuakeTime = (iso: string) => `${fmtMD(iso.slice(0, 10))} ${iso.slice(11, 16)}`
 
+/** 規模一律一位小數：JSON 的 5.0 會變成 5 */
+export const fmtMagnitude = (m: number) => m.toFixed(1)
+
 /** 選取的地震；id 不在清單（null 或已被新資料擠掉）時退回最新一筆 */
 export const pickQuake = (list: Earthquake[], id: string | null): Earthquake | null =>
   list.find(q => q.id === id) ?? list[0] ?? null
@@ -36,7 +39,7 @@ export function quakeBadge(list: Earthquake[], now: number): string | null {
   const q = list[0]
   if (!q || now - Date.parse(q.time) > BADGE_WINDOW) return null
   const max = maxIntensity(q)
-  return `地震 M${q.magnitude} ${q.location}${max ? ` · 最大 ${max}` : ''}`
+  return `地震 M${fmtMagnitude(q.magnitude)} ${q.location}${max ? ` · 最大 ${max}` : ''}`
 }
 
 /** 震央與所有測站的外框 */

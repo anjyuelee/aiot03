@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { Point } from 'geojson'
 import type { Earthquake, QuakeStation } from '../../../shared/types'
 import {
-  INTENSITY_LEGEND, fmtQuakeTime, intensityColor, intensityRank, maxIntensity, pickQuake, quakeBadge, quakeBounds, toGeoJSON,
+  INTENSITY_LEGEND, fmtMagnitude, fmtQuakeTime, intensityColor, intensityRank, maxIntensity, pickQuake, quakeBadge, quakeBounds, toGeoJSON,
 } from './quakes'
 
 const st = (name: string, lon: number, lat: number, intensity: string): QuakeStation => ({ id: name, name, lat, lon, intensity })
@@ -75,6 +75,11 @@ describe('quakeBadge', () => {
   it('is null without quakes and omits the intensity when there is none', () => {
     expect(quakeBadge([], t)).toBeNull()
     expect(quakeBadge([quake('2026-09-22T05:16:13+08:00', { counties: [] })], t)).toBe('地震 M4.2 臺南市楠西區')
+  })
+  it('shows whole-number magnitudes with one decimal', () => {
+    expect(fmtMagnitude(5)).toBe('5.0')
+    expect(fmtMagnitude(4.2)).toBe('4.2')
+    expect(quakeBadge([quake('2026-09-22T05:16:13+08:00', { magnitude: 5 })], t)).toBe('地震 M5.0 臺南市楠西區 · 最大 4級')
   })
 })
 

@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useEarthquakes } from '../api'
 import { useStore } from '../store'
-import { INTENSITY_LEGEND, fmtQuakeTime, intensityColor, maxIntensity, pickQuake } from '../lib/quakes'
+import { INTENSITY_LEGEND, fmtMagnitude, fmtQuakeTime, intensityColor, maxIntensity, pickQuake } from '../lib/quakes'
 
 export default function QuakeCard() {
   const q = useEarthquakes()
@@ -23,15 +23,15 @@ export default function QuakeCard() {
       {sel && (
         <>
           <section className="quake-detail">
-            <h3>M{sel.magnitude} {sel.location}</h3>
+            <h3>M{fmtMagnitude(sel.magnitude)} {sel.location}</h3>
             <div className="muted">
               {fmtQuakeTime(sel.time)} · 深度 {sel.depth} km · {sel.no != null ? `第 ${sel.no} 號` : '小區域有感地震'}
             </div>
-            <a href={sel.web} target="_blank" rel="noreferrer">CWA 報告 ↗</a>
+            {sel.web && <a href={sel.web} target="_blank" rel="noreferrer">CWA 報告 ↗</a>}
           </section>
           <section className="quake-counties">
             {sel.counties.map(c => (
-              <details key={c.county}>
+              <details key={`${sel.id}:${c.county}`}>
                 <summary>
                   <span className="dot" style={{ background: intensityColor(c.intensity) }} />
                   <span>{c.county}</span>
@@ -55,7 +55,7 @@ export default function QuakeCard() {
                 <li key={x.id}>
                   <button className={x.id === sel.id ? 'on' : ''} aria-pressed={x.id === sel.id} onClick={() => choose(x.id)}>
                     <span className="dot" style={{ background: intensityColor(maxIntensity(x) ?? '') }} />
-                    <b>M{x.magnitude}</b>
+                    <b>M{fmtMagnitude(x.magnitude)}</b>
                     <span className="place">{x.location}</span>
                     <span className="muted">{fmtQuakeTime(x.time)}</span>
                   </button>
