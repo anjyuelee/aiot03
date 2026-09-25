@@ -2,8 +2,12 @@ import type { DB } from './db.js'
 import type { ImageKind } from '../shared/types.js'
 import { cwa, type Fetcher } from './cwa/client.js'
 import { parseSatelliteKmz } from './cwa/kmz.js'
-import { parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseTyphoons, parseWarnings, parseWeatherStations } from './cwa/parse.js'
-import { logFetch, replaceForecasts, replaceObservations, replaceSatelliteTiles, replaceTyphoons, replaceWarnings, upsertImage } from './repo.js'
+import {
+  parseEarthquakes, parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseTyphoons, parseWarnings, parseWeatherStations,
+} from './cwa/parse.js'
+import {
+  logFetch, replaceEarthquakes, replaceForecasts, replaceObservations, replaceSatelliteTiles, replaceTyphoons, replaceWarnings, upsertImage,
+} from './repo.js'
 
 // F-D0047-001 起每 4 號一個縣市：+0 為 3 天預報、+2 為一週預報
 const countyIds = (offset: number) =>
@@ -72,4 +76,12 @@ export async function syncWarnings(db: DB, f: Fetcher = cwa): Promise<void> {
   if (!json.records?.location?.length) throw new Error('CWA returned no warning locations')
   replaceWarnings(db, parseWarnings(json))
   logFetch(db, 'warnings', now())
+}
+
+// 兩個資料集都固定回傳最新 16 筆；任一個沒有報告就視為異常回應，整批保留舊資料，兩者才會是同一版
+export async function syncEarthquakes(db: DB, f: Fetcher = cwa): Promise<void> {
+  const [significant, local] = await Promise.all([f.dataset('E-A0015-001'), f.dataset('E-A0016-001')])
+  if (!significant.records?.Earthquake?.length || !local.records?.Earthquake?.length) throw new Error('CWA returned no earthquake reports')
+  replaceEarthquakes(db, [...parseEarthquakes(significant, true), ...parseEarthquakes(local, false)])
+  logFetch(db, 'earthquakes', now())
 }

@@ -1,5 +1,7 @@
 import type { DB } from './db.js'
-import type { Bounds, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, Warning, WeekSlot } from '../shared/types.js'
+import type {
+  Bounds, Earthquake, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, Warning, WeekSlot,
+} from '../shared/types.js'
 import type { RainObsRow, Slot3hRow, StationRow, WeatherObsRow, WeekRow } from './cwa/parse.js'
 import type { SatelliteTileRow } from './cwa/kmz.js'
 
@@ -124,6 +126,19 @@ export function replaceWarnings(db: DB, list: Warning[]): void {
 export function listWarnings(db: DB): Warning[] {
   return db.prepare(`SELECT county_code AS countyCode, county, phenomena, significance, start_time AS start, end_time AS "end"
     FROM warnings ORDER BY county_code, phenomena`).all() as Warning[]
+}
+
+// 震度資料為巢狀結構且一律整批讀寫，直接存 JSON；id 皆為 +08:00 ISO，字串序即時間序
+export function replaceEarthquakes(db: DB, list: Earthquake[]): void {
+  const insert = db.prepare('INSERT OR REPLACE INTO earthquakes (id, json) VALUES (?, ?)')
+  db.transaction(() => {
+    db.prepare('DELETE FROM earthquakes').run()
+    for (const q of list) insert.run(q.id, JSON.stringify(q))
+  })()
+}
+
+export function listEarthquakes(db: DB): Earthquake[] {
+  return (db.prepare('SELECT json FROM earthquakes ORDER BY id DESC').all() as { json: string }[]).map(r => JSON.parse(r.json))
 }
 
 export function logFetch(db: DB, dataset: string, at: string): void {

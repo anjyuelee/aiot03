@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS typhoons (id TEXT PRIMARY KEY, json TEXT);
 CREATE TABLE IF NOT EXISTS warnings (
   county_code TEXT, county TEXT, phenomena TEXT, significance TEXT, start_time TEXT, end_time TEXT,
   PRIMARY KEY (county_code, phenomena, significance));
+CREATE TABLE IF NOT EXISTS earthquakes (id TEXT PRIMARY KEY, json TEXT);
 CREATE TABLE IF NOT EXISTS fetch_log (dataset TEXT PRIMARY KEY, fetched_at TEXT);
 `
 

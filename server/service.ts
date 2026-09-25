@@ -1,10 +1,13 @@
-import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon, Warning } from '../shared/types.js'
+import type {
+  ApiResponse, Earthquake, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+} from '../shared/types.js'
 import { getDb } from './db.js'
 import { ensureFresh } from './freshness.js'
 import {
-  getGrid, getImage, getSatelliteTile, getTownForecast, listGridTimes, listObservations, listSatelliteTiles, listTowns, listTyphoons, listWarnings,
+  getGrid, getImage, getSatelliteTile, getTownForecast, listEarthquakes, listGridTimes, listObservations, listSatelliteTiles, listTowns, listTyphoons,
+  listWarnings,
 } from './repo.js'
-import { syncForecast, syncImage, syncObservations, syncTyphoons, syncWarnings } from './sync.js'
+import { syncEarthquakes, syncForecast, syncImage, syncObservations, syncTyphoons, syncWarnings } from './sync.js'
 
 export async function getObservations(): Promise<ApiResponse<Observation[]>> {
   const db = getDb()
@@ -69,4 +72,10 @@ export async function getWarnings(): Promise<ApiResponse<Warning[]>> {
   const db = getDb()
   const meta = await ensureFresh(db, 'warnings', () => syncWarnings(db))
   return { data: listWarnings(db), ...meta }
+}
+
+export async function getEarthquakes(): Promise<ApiResponse<Earthquake[]>> {
+  const db = getDb()
+  const meta = await ensureFresh(db, 'earthquakes', () => syncEarthquakes(db))
+  return { data: listEarthquakes(db), ...meta }
 }

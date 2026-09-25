@@ -4,10 +4,12 @@ import { openDb, type DB } from './db.js'
 import {
   replaceObservations, listObservations, replaceForecasts, listTowns, getTownForecast,
   listGridTimes, getGrid, upsertImage, getImage, logFetch, getFetchedAt,
-  replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile, replaceWarnings, listWarnings,
+  replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile, replaceWarnings, listWarnings, replaceEarthquakes, listEarthquakes,
 } from './repo.js'
 import type { Bounds } from '../shared/types.js'
-import { parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseWarnings } from './cwa/parse.js'
+import {
+  parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseWarnings, parseEarthquakes,
+} from './cwa/parse.js'
 
 let db: DB
 beforeEach(() => { db = openDb(':memory:') })
@@ -94,5 +96,27 @@ describe('warnings', () => {
       start: '2026-09-25T05:30:00+08:00', end: '2026-09-25T17:30:00+08:00',
     })
     expect(rows[0].end).toBeNull()
+  })
+})
+
+describe('earthquakes', () => {
+  it('replaces the whole list and reads it back newest first', () => {
+    const significant = parseEarthquakes(fixture('E-A0015-001.json'), true)
+    const local = parseEarthquakes(fixture('E-A0016-001.json'), false)
+    replaceEarthquakes(db, significant)
+    replaceEarthquakes(db, [...significant, ...local])
+    const rows = listEarthquakes(db)
+    expect(rows.map(q => q.id)).toEqual([
+      '2026-09-25T01:01:23+08:00', '2026-09-24T05:57:05+08:00', '2026-09-22T05:16:13+08:00', '2026-09-14T06:44:41+08:00',
+    ])
+    expect(rows[2]).toEqual(significant[0])
+    replaceEarthquakes(db, local)
+    expect(listEarthquakes(db).map(q => q.no)).toEqual([null, null])
+  })
+
+  it('keeps one row when both datasets report the same origin time', () => {
+    const [q] = parseEarthquakes(fixture('E-A0015-001.json'), true)
+    replaceEarthquakes(db, [q, { ...q, no: null }])
+    expect(listEarthquakes(db)).toEqual([{ ...q, no: null }])
   })
 })

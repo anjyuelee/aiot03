@@ -10,6 +10,7 @@ export const TTL = {
   satellite: 10 * MIN,
   typhoon: 30 * MIN,
   warnings: 10 * MIN,
+  earthquakes: 5 * MIN,
 } as const
 
 export type DatasetKey = keyof typeof TTL

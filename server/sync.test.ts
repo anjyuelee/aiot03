@@ -4,8 +4,10 @@ import { fixture } from './__fixtures__/load.js'
 import { sampleKmz } from './__fixtures__/kmz.js'
 import { openDb, type DB } from './db.js'
 import type { Fetcher } from './cwa/client.js'
-import { syncObservations, syncForecast, syncImage, syncTyphoons, syncWarnings } from './sync.js'
-import { listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons, listWarnings } from './repo.js'
+import { syncObservations, syncForecast, syncImage, syncTyphoons, syncWarnings, syncEarthquakes } from './sync.js'
+import {
+  listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons, listWarnings, listEarthquakes,
+} from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
 
@@ -162,5 +164,33 @@ describe('syncWarnings', () => {
     await expect(syncWarnings(db, withWarnings({ success: 'true', records: { location: [] } }))).rejects.toThrow('no warning locations')
     expect(listWarnings(db)).toHaveLength(5)
     expect(getFetchedAt(db, 'warnings')).toBe(fetchedAt)
+  })
+})
+
+describe('syncEarthquakes', () => {
+  const withQuakes = (significant: unknown, local: unknown): Fetcher => ({
+    async dataset(id) {
+      if (id === 'E-A0015-001') return significant
+      if (id === 'E-A0016-001') return local
+      throw new Error(`unexpected dataset ${id}`)
+    },
+    file: async () => { throw new Error('unexpected file') },
+    bytes: noBytes,
+  })
+
+  it('merges both datasets newest first and logs the fetch', async () => {
+    await syncEarthquakes(db, withQuakes(fixture('E-A0015-001.json'), fixture('E-A0016-001.json')))
+    expect(listEarthquakes(db).map(q => q.no)).toEqual([null, null, 115064, 115063])
+    expect(getFetchedAt(db, 'earthquakes')).not.toBeNull()
+  })
+
+  it('keeps the old list when either dataset comes back without reports', async () => {
+    await syncEarthquakes(db, withQuakes(fixture('E-A0015-001.json'), fixture('E-A0016-001.json')))
+    const fetchedAt = getFetchedAt(db, 'earthquakes')
+    const none = { success: 'true', records: { Earthquake: [] } }
+    await expect(syncEarthquakes(db, withQuakes(fixture('E-A0015-001.json'), none))).rejects.toThrow('no earthquake reports')
+    await expect(syncEarthquakes(db, withQuakes({ success: 'true', records: {} }, fixture('E-A0016-001.json')))).rejects.toThrow('no earthquake reports')
+    expect(listEarthquakes(db)).toHaveLength(4)
+    expect(getFetchedAt(db, 'earthquakes')).toBe(fetchedAt)
   })
 })
