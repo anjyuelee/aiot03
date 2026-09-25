@@ -3,7 +3,9 @@ import { useEffect, useMemo } from 'react'
 import { feature, mesh } from 'topojson-client'
 import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
-import type { ApiResponse, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon, Warning } from '../../shared/types'
+import type {
+  ApiResponse, Earthquake, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+} from '../../shared/types'
 import { radarOverlay, satelliteOverlay } from './lib/overlays'
 import type { CloudMode } from './lib/clouds'
 import type { CountyShapes } from './lib/geo'
@@ -113,3 +115,6 @@ export const useTyphoons = (enabled: boolean) =>
 
 export const useWarnings = () =>
   useQuery({ queryKey: ['warnings'], queryFn: () => get<Warning[]>('/api/warnings'), refetchInterval: TEN_MIN })
+
+export const useEarthquakes = () =>
+  useQuery({ queryKey: ['earthquakes'], queryFn: () => get<Earthquake[]>('/api/earthquakes'), refetchInterval: FIVE_MIN })

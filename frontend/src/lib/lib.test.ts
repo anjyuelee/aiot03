@@ -165,6 +165,7 @@ describe('urlState', () => {
     expect(parseUrlState('')).toEqual({ layer: 'temp', t: 0, town: null })
     expect(parseUrlState('?layer=wind&t=6&town=10002010')).toEqual({ layer: 'wind', t: 6, town: '10002010' })
     expect(parseUrlState('?layer=bogus&t=-3')).toEqual({ layer: 'temp', t: 0, town: null })
+    expect(parseUrlState('?layer=quake')).toEqual({ layer: 'quake', t: 0, town: null })
   })
   it('serializes', () => {
     expect(toSearch({ layer: 'rain', t: 0, town: null })).toBe('?layer=rain')

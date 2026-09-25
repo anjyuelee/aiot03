@@ -1,7 +1,7 @@
 import type { ScaleId } from './colorScale'
 
-export type LayerId = 'temp' | 'wind' | 'rain' | 'humidity' | 'radar' | 'satellite' | 'typhoon' | 'warning' | 'admin'
-export const LAYER_IDS: LayerId[] = ['temp', 'wind', 'rain', 'humidity', 'radar', 'satellite', 'typhoon', 'warning', 'admin']
+export type LayerId = 'temp' | 'wind' | 'rain' | 'humidity' | 'radar' | 'satellite' | 'typhoon' | 'warning' | 'quake' | 'admin'
+export const LAYER_IDS: LayerId[] = ['temp', 'wind', 'rain', 'humidity', 'radar', 'satellite', 'typhoon', 'warning', 'quake', 'admin']
 
 export interface LayerDef {
   label: string
@@ -19,6 +19,7 @@ export const LAYERS: Record<LayerId, LayerDef> = {
   satellite: { label: '衛星', icon: '🛰️' },
   typhoon: { label: '颱風', icon: '🌀' },
   warning: { label: '特報', icon: '⚠️' },
+  quake: { label: '地震', icon: '🫨' },
   admin: { label: '行政區', icon: '🗺️' },
 }
 

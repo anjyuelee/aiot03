@@ -16,6 +16,8 @@ interface State {
   playing: boolean
   cloudMode: CloudMode
   basemap: BasemapId
+  /** 地震圖層選取的地震 id；null 為最新一筆，不寫進網址 */
+  quake: string | null
   setLayer: (layer: LayerId) => void
   setT: (t: number) => void
   setPos: (pos: number) => void
@@ -24,6 +26,7 @@ interface State {
   setPlaying: (playing: boolean) => void
   setCloudMode: (cloudMode: CloudMode) => void
   setBasemap: (basemap: BasemapId) => void
+  selectQuake: (quake: string | null) => void
 }
 
 const initial = parseUrlState(window.location.search)
@@ -35,6 +38,7 @@ export const useStore = create<State>(set => ({
   playing: false,
   cloudMode: 'enhanced',
   basemap: 'dark',
+  quake: null,
   // 雷達/衛星沒有未來時段，切換時回到「現在」
   setLayer: layer => set(LAYERS[layer].future ? { layer } : { layer, t: 0, pos: 0, playing: false }),
   setT: t => set({ t, pos: t }),
@@ -44,6 +48,7 @@ export const useStore = create<State>(set => ({
   setPlaying: playing => set({ playing }),
   setCloudMode: cloudMode => set({ cloudMode }),
   setBasemap: basemap => set({ basemap }),
+  selectQuake: quake => set({ quake }),
 }))
 
 // 播放時 pos 每幀都變，只在網址相關的欄位改變時才寫網址（瀏覽器會限制 replaceState 頻率）
