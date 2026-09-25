@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { lerpValues } from '../lib/playback'
-import { usePrefetchGrids, useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds, useTyphoons } from '../api'
+import { usePrefetchGrids, useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds, useTyphoons, useWarnings } from '../api'
 import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
 import { SCALES } from '../lib/colorScale'
@@ -12,6 +12,7 @@ import { useChoropleth } from '../map/useChoropleth'
 import WindParticles from './WindParticles'
 import TyphoonLayer from './TyphoonLayer'
 import AdminLayer from './AdminLayer'
+import WarningLayer from './WarningLayer'
 
 export default function DataLayers({ map }: { map: MlMap }) {
   const layer = useStore(s => s.layer)
@@ -35,6 +36,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
   const satellite = useSatellite(layer === 'satellite')
   const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null, cloudMode)
   const typhoon = useTyphoons(layer === 'typhoon')
+  const warnings = useWarnings()
 
   // 熱圖只依欄位與觀測資料而定，時間軸來回切換時重用
   const heatCache = useMemo(() => new Map<string, CanvasOverlay>(), [obs.data])
@@ -65,6 +67,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
       {layer === 'wind' && !future && obs.data && <WindParticles map={map} obs={obs.data.data} />}
       {layer === 'typhoon' && typhoon.data && <TyphoonLayer map={map} list={typhoon.data.data} />}
       {layer === 'admin' && <AdminLayer map={map} />}
+      {layer === 'warning' && warnings.data && <WarningLayer map={map} list={warnings.data.data} />}
     </>
   )
 }
