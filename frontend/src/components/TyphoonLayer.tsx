@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Popup, type FilterSpecification, type Map as MlMap, type MapLayerMouseEvent } from 'maplibre-gl'
 import type { Typhoon } from '../../../shared/types'
 import { fixLines, toGeoJSON, typhoonBounds } from '../lib/typhoon'
-import { dataLayerBefore, removeLayerAndSource } from '../map/helpers'
+import { cardFitPadding, dataLayerBefore, removeLayerAndSource } from '../map/helpers'
 import { useStore } from '../store'
 import { inkOf } from '../lib/basemaps'
 
@@ -10,10 +10,6 @@ const SRC = 'typhoon'
 const POINTS = 'typhoon-points'
 const LAYER_IDS = ['typhoon-cone', 'typhoon-wind-fill', 'typhoon-wind-line', 'typhoon-track-past', 'typhoon-track-forecast', POINTS]
 const role = (r: string): FilterSpecification => ['==', ['get', 'role'], r]
-// 左側避開 .card（340px＋間距）；手機版卡片在底部
-const fitPadding = () => matchMedia('(max-width: 640px)').matches
-  ? { top: 60, bottom: Math.round(innerHeight * 0.45), left: 20, right: 20 }
-  : { top: 60, bottom: 110, left: 380, right: 140 }
 
 export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[] }) {
   const fitted = useRef(false)
@@ -83,7 +79,7 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
     if (fitted.current || list.length === 0) return
     fitted.current = true
     const [w, s, e, n] = typhoonBounds(list)
-    map.fitBounds([[w, s], [e, n]], { padding: fitPadding(), maxZoom: 7 })
+    map.fitBounds([[w, s], [e, n]], { padding: cardFitPadding(), maxZoom: 7 })
   }, [map, list])
 
   return null

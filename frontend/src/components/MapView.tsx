@@ -13,6 +13,9 @@ import type { Town } from '../../../shared/types'
 
 setWorkerUrl(workerUrl)
 
+// 颱風、地震圖層自己處理地圖點擊，切入時也會自動縮放到資料範圍
+const ownsMap = () => ['typhoon', 'quake'].includes(useStore.getState().layer)
+
 export default function MapView({ onReady }: { onReady: (map: MlMap | null) => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
@@ -42,8 +45,7 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     mapRef.current = map
     map.on('load', () => onReady(map))
     map.on('click', e => {
-      // 颱風圖層的點擊留給路徑點 popup
-      if (useStore.getState().layer === 'typhoon') return
+      if (ownsMap()) return
       const { lng, lat } = e.lngLat
       const [w, s, east, n] = TAIWAN_BOUNDS
       if (lng < w || lng > east || lat < s || lat > n) return
@@ -88,8 +90,8 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     const t = data?.data.find(x => x.id === initialTown.current)
     if (!t || !mapRef.current) return
     initialTown.current = null
-    // 颱風圖層已自動縮放到颱風路徑，不要被晚到的地點蓋掉
-    if (useStore.getState().layer !== 'typhoon') mapRef.current.flyTo({ center: [t.lon, t.lat], zoom: 10 })
+    // 颱風、地震圖層已自動縮放到資料範圍，不要被晚到的地點蓋掉
+    if (!ownsMap()) mapRef.current.flyTo({ center: [t.lon, t.lat], zoom: 10 })
   }, [data])
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
     if (useStore.getState().town) return
     const t = nearest(data.data, here.lon, here.lat)
     if (t) useStore.getState().selectTown(t.id)
-    if (useStore.getState().layer !== 'typhoon') mapRef.current.flyTo({ center: [here.lon, here.lat], zoom: 10 })
+    if (!ownsMap()) mapRef.current.flyTo({ center: [here.lon, here.lat], zoom: 10 })
   }, [here, data])
 
   return <div ref={ref} className="map" />
