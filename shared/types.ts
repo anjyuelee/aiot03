@@ -108,3 +108,16 @@ export interface Typhoon {
   past: TyphoonFix[]
   forecast: TyphoonFix[]
 }
+
+export interface Warning {
+  /** 5 碼，對應 taiwan-atlas COUNTYCODE */
+  countyCode: string
+  county: string
+  /** 例：大雨、豪雨、陸上強風 */
+  phenomena: string
+  /** 例：特報、警報 */
+  significance: string
+  /** +08:00 ISO；CWA 未提供時為 null */
+  start: string | null
+  end: string | null
+}

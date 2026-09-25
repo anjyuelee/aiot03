@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../__fixtures__/load.js'
 import {
-  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseTyphoons,
+  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseTyphoons, parseWarnings,
 } from './parse.js'
 
 describe('num', () => {
@@ -127,5 +127,37 @@ describe('parseTyphoons', () => {
     const ty = { Year: '2026', CwaTdNo: '30', ForecastData: { Fix: [{ ...fix, ForecastHour: '6' }, fix] } }
     const [t] = parseTyphoons({ records: { TropicalCyclones: { TropicalCyclone: [ty] } } })
     expect(t.forecast.map(f => f.forecastHour)).toEqual([6])
+  })
+})
+
+describe('parseWarnings', () => {
+  const list = parseWarnings(fixture('W-C0033-001.json'))
+
+  it('emits one row per hazard and skips counties without hazards', () => {
+    expect(list).toHaveLength(5)
+    expect(list.filter(w => w.county === '宜蘭縣').map(w => w.phenomena)).toEqual(['大雨', '陸上強風'])
+  })
+
+  it('pads geocodes to 5-digit county codes', () => {
+    expect(list.find(w => w.county === '臺北市')!.countyCode).toBe('63000')
+    expect(list.find(w => w.county === '連江縣')!.countyCode).toBe('09007')
+    expect(list.find(w => w.county === '宜蘭縣')!.countyCode).toBe('10002')
+  })
+
+  it('normalises both time formats to +08:00 ISO and keeps a missing end null', () => {
+    const [rain, wind] = list.filter(w => w.county === '宜蘭縣')
+    expect(rain).toEqual({
+      countyCode: '10002', county: '宜蘭縣', phenomena: '大雨', significance: '特報',
+      start: '2026-09-25T05:30:00+08:00', end: '2026-09-25T17:30:00+08:00',
+    })
+    expect(wind.start).toBe('2026-09-25T00:00:00+08:00')
+    expect(wind.end).toBe('2026-09-26T06:00:00+08:00')
+    expect(list.find(w => w.county === '連江縣')!.end).toBeNull()
+  })
+
+  it('returns an empty list when no county has hazards', () => {
+    const quiet = { records: { location: [{ locationName: '宜蘭縣', geocode: 10002, hazardConditions: { hazards: [] } }] } }
+    expect(parseWarnings(quiet)).toEqual([])
+    expect(parseWarnings({ records: {} })).toEqual([])
   })
 })

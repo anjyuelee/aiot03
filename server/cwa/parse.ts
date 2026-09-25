@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- CWA JSON is external, shapes verified by fixtures */
-import type { Bounds, ForecastSlot, ImageKind, ImageOverlay, Town, Typhoon, TyphoonFix, WeekSlot } from '../../shared/types.js'
+import type { Bounds, ForecastSlot, ImageKind, ImageOverlay, Town, Typhoon, TyphoonFix, Warning, WeekSlot } from '../../shared/types.js'
 
 export interface StationRow { id: string; name: string; county: string; town: string; lat: number; lon: number }
 export interface WeatherObsRow { stationId: string; obsTime: string; temp: number | null; humidity: number | null; windSpeed: number | null; windDir: number | null }
@@ -188,4 +188,36 @@ export function parseTyphoons(json: any): Typhoon[] {
       return typhoonFix(f, addHours(f.InitialTime, h), h)
     }).filter(isFix),
   }))
+}
+
+/** CWA 縣市代碼是數字：直轄市 2 碼（63～68）右補零、其餘左補零，對齊 taiwan-atlas 的 5 碼 COUNTYCODE */
+export function toCountyCode(geocode: unknown): string {
+  const s = String(geocode)
+  return s.length <= 2 ? s.padEnd(5, '0') : s.padStart(5, '0')
+}
+
+/** 特報時間可能是 `YYYY-MM-DD HH:mm:ss` 或 ISO，統一成 +08:00 ISO；空白或無法辨識為 null */
+export function toTaipeiIso(s: unknown): string | null {
+  if (typeof s !== 'string') return null
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2}))?/.exec(s.trim())
+  return m ? `${m[1]}T${m[2]}:${m[3] ?? '00'}+08:00` : null
+}
+
+export function parseWarnings(json: any): Warning[] {
+  const out: Warning[] = []
+  for (const loc of json.records?.location ?? []) {
+    for (const h of loc.hazardConditions?.hazards ?? []) {
+      const phenomena = h.info?.phenomena
+      if (!phenomena) continue
+      out.push({
+        countyCode: toCountyCode(loc.geocode),
+        county: loc.locationName,
+        phenomena,
+        significance: h.info?.significance || '特報',
+        start: toTaipeiIso(h.validTime?.startTime),
+        end: toTaipeiIso(h.validTime?.endTime),
+      })
+    }
+  }
+  return out
 }
