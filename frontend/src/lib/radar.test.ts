@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, radarStart, snapRadar, trackPos } from './radar'
+import { advanceRadar, agoLabel, canToggleRadar, hourTicks, nearestLoaded, radarIndex, radarStart, snapRadar, trackPos } from './radar'
 import { SCALES } from './colorScale'
 
 describe('advanceRadar', () => {
@@ -43,6 +43,20 @@ describe('snapRadar / radarIndex', () => {
     expect(radarIndex(-30, 19)).toBe(0)
     // 清單變短（缺格）時停在「現在」仍是最後一格
     expect(radarIndex(0, 17)).toBe(16)
+  })
+})
+
+describe('nearestLoaded', () => {
+  it('uses the frame itself when it has loaded', () => {
+    expect(nearestLoaded(['a', 'b', 'c'], 2)).toBe('c')
+  })
+  it('falls back to the closest earlier frame so the first view is not blank while the newest one loads', () => {
+    expect(nearestLoaded(['a', 'b', null], 2)).toBe('b')
+    expect(nearestLoaded(['a', undefined, null], 2)).toBe('a')
+  })
+  it('gives nothing when no frame at or before the index has loaded', () => {
+    expect(nearestLoaded([null, 'b', 'c'], 0)).toBeNull()
+    expect(nearestLoaded([], 0)).toBeNull()
   })
 })
 

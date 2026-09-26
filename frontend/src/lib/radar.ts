@@ -17,6 +17,15 @@ export const snapRadar = (pos: number) => Math.min(0, Math.round(pos))
 /** 播放中一律可以暫停；要開始播放得等每格都有結果（成功或失敗），且不只一格 */
 export const canToggleRadar = (playing: boolean, settled: boolean, n: number) => playing || (settled && n > 1)
 
+/** 目前這格還沒載入或失敗時，改用時間在它之前、最接近的已載入格；第一次開啟時最新一格較慢也不會是空白地圖 */
+export function nearestLoaded<T>(items: (T | null | undefined)[], index: number): T | null {
+  for (let i = Math.min(index, items.length - 1); i >= 0; i--) {
+    const item = items[i]
+    if (item != null) return item
+  }
+  return null
+}
+
 /** 位置 → 時間軸滑桿位置（0～n-1）；起點的前半格、停留區間與清單變短時都夾在軌道內 */
 export const trackPos = (pos: number, n: number) => Math.min(n - 1, Math.max(0, n - 1 + pos))
 
