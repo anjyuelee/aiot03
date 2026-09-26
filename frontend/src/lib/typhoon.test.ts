@@ -104,6 +104,18 @@ describe('timeAtPos', () => {
     const start = Date.parse('2026-09-27T01:00:00+08:00')
     expect(timeAtPos(1, times, start)).toBe(start)
     expect(timeAtPos(2, times, start)).toBe(Date.parse(times[1]))
+    // 格與格之間也一樣：0.5 落在 start 與較早的 times[0] 之間，1.5 已超過 start
+    expect(timeAtPos(0.5, times, start)).toBe(start)
+    expect(timeAtPos(1.5, times, start)).toBe(Date.parse('2026-09-27T01:30:00+08:00'))
+  })
+  it('never moves backwards as the position grows', () => {
+    const start = Date.parse('2026-09-27T01:00:00+08:00')
+    let prev = -Infinity
+    for (let p = 0; p <= times.length; p += 0.05) {
+      const t = timeAtPos(p, times, start)
+      expect(t).toBeGreaterThanOrEqual(prev)
+      prev = t
+    }
   })
   it('stays at the latest fix without forecast slots', () => {
     expect(timeAtPos(3, [], T0)).toBe(T0)
