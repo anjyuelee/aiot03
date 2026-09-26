@@ -146,12 +146,12 @@ export interface Earthquake {
 
 | 圖層 | 內容 | 樣式 |
 |---|---|---|
-| `quake-stations` | 選取地震的測站 | `circle-radius` 5、依 `color` 上色、邊框為底圖 ink 色 0.5px |
-| `quake-epicenters` | 未選取的震央 | `circle-radius` 依規模線性內插：M2 → 4px、M6 → 16px（範圍外夾住）；依 `color` 上色；`circle-opacity` 0.5；邊框 ink 色 1px |
+| `quake-stations` | 選取地震的測站 | `circle-radius` 4、依 `color` 上色、邊框為底圖 ink 色 0.5px |
+| `quake-epicenters` | 未選取的震央 | `circle-radius` 依規模線性內插：M2 → 8px、M6 → 18px（範圍外夾住；最小的震央直徑也是測站的兩倍，兩者不混淆）；依 `color` 上色；`circle-opacity` 0.5；邊框 ink 色 1px |
 | `quake-selected` | 選取的震央 | `symbol`，紅色（`#fa5252`）白邊五角星，以 canvas 畫成約 24px 後 `map.addImage`，`icon-allow-overlap` |
 
 - 點 `quake-epicenters` 的點 → `selectQuake(id)`；滑過時游標變手指。
-- 選取的地震 id 改變時（含切入圖層、清單更新使最新一筆換人）`fitBounds(quakeBounds(q), { padding: cardFitPadding(), maxZoom: 9 })`；同一筆重新取得資料不再縮放。
+- 選取的地震 id 改變時（含切入圖層、清單更新使最新一筆換人）`fitBounds(quakeBounds(q), { padding: cardFitPadding(), maxZoom: 9 })`；同一筆重新取得資料不再縮放。換底圖時圖層會卸載再掛上，所以在模組層級記住上次縮放到的地震 id，同一筆不再縮放、保留使用者的視角；元件卸載時若已離開地震圖層才清掉，重新切進來仍會縮放。
 - 資料或選取改變時只 `setData`，不重建圖層；底圖 ink 色改變時重建（同 `TyphoonLayer`）。離開圖層時移除圖層、source 與圖片。
 - `frontend/src/map/helpers.ts`：把 `TyphoonLayer.tsx` 內的 `fitPadding` 移出為 `cardFitPadding()` 共用（左側避開桌機卡片、手機避開底部抽屜），`TyphoonLayer` 改為引用它。
 - `frontend/src/components/MapView.tsx`：地圖 click 在 `typhoon` 或 `quake` 圖層時都直接 return；初次載入的鄉鎮 `flyTo` 與 GPS 定位 `flyTo` 在這兩個圖層都略過，以免蓋掉 `fitBounds`。
@@ -161,7 +161,7 @@ export interface Earthquake {
 地震圖層時取代 `LocationCard`（`App.tsx` 依圖層切換）。標題「🫨 有感地震」，下分三塊：
 
 1. **選取的地震**：`M4.2 臺南市楠西區` 為小標題；下方依序為 `fmtQuakeTime`、`深度 7.5 km`、「第 115064 號」或「小區域有感地震」、「CWA 報告 ↗」（`web`，新分頁開啟），`web` 為空時不顯示。
-2. **各地震度**：每個縣市一個 `<details>`（key 含地震 id，切換地震時收合），`summary` 為色點＋縣市名＋震度；展開後每個測站一列（名稱、震度）。下方一條 `INTENSITY_LEGEND` 色階圖例。
+2. **各地震度**：每個縣市一個 `<details>`，`summary` 為色點＋縣市名＋震度；展開後每個測站一列（名稱、震度）。預設只列前 5 個縣市（CWA 已依震度由大到小排），超過時加「顯示其餘 N 縣市」按鈕展開全部，近期清單才不會被擠到很下方。這一塊是以地震 id 為 key 的子元件，切換地震時展開狀態與 `<details>` 都重設。下方一條 `INTENSITY_LEGEND` 色階圖例。
 3. **近期地震**：每筆一列按鈕（最大震度色點、`M4.2`、地名、`fmtQuakeTime`），選取中者反白；點了 `selectQuake(id)` 並把卡片捲回頂端。
 
 載入中顯示 skeleton、失敗顯示「無法載入地震資料，請稍後再試。」、空清單顯示「近期無有感地震資料」。

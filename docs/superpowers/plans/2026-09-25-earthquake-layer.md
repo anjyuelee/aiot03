@@ -286,6 +286,24 @@ export interface Earthquake {
                   "StationLongitude": 120.646
                 }
               ]
+            },
+            {
+              "AreaDesc": "最大震度4級地區",
+              "CountyName": "臺南市",
+              "AreaIntensity": "4級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度3級地區",
+              "CountyName": "嘉義縣",
+              "AreaIntensity": "3級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度1級地區",
+              "CountyName": "高雄市、嘉義市、雲林縣、臺東縣、南投縣、花蓮縣、彰化縣",
+              "AreaIntensity": "1級",
+              "EqStation": []
             }
           ]
         }
@@ -394,6 +412,30 @@ export interface Earthquake {
                   "StationLongitude": 121.563
                 }
               ]
+            },
+            {
+              "AreaDesc": "最大震度4級地區",
+              "CountyName": "臺東縣",
+              "AreaIntensity": "4級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度3級地區",
+              "CountyName": "花蓮縣",
+              "AreaIntensity": "3級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度2級地區",
+              "CountyName": "雲林縣",
+              "AreaIntensity": "2級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度1級地區",
+              "CountyName": "屏東縣、高雄市、南投縣、嘉義縣、臺南市、嘉義市、臺中市、彰化縣",
+              "AreaIntensity": "1級",
+              "EqStation": []
             }
           ]
         }
@@ -477,6 +519,12 @@ export interface Earthquake {
                   "StationLongitude": 121.088
                 }
               ]
+            },
+            {
+              "AreaDesc": "最大震度1級地區",
+              "CountyName": "苗栗縣、新竹縣",
+              "AreaIntensity": "1級",
+              "EqStation": []
             }
           ]
         }
@@ -563,6 +611,24 @@ export interface Earthquake {
                   "StationLongitude": 120.474
                 }
               ]
+            },
+            {
+              "AreaDesc": "最大震度3級地區",
+              "CountyName": "嘉義市",
+              "AreaIntensity": "3級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度2級地區",
+              "CountyName": "嘉義縣、雲林縣",
+              "AreaIntensity": "2級",
+              "EqStation": []
+            },
+            {
+              "AreaDesc": "最大震度1級地區",
+              "CountyName": "臺南市、彰化縣",
+              "AreaIntensity": "1級",
+              "EqStation": []
             }
           ]
         }
