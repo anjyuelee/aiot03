@@ -138,6 +138,11 @@ describe('typhoonAt', () => {
   it('is null without any fix', () => {
     expect(typhoonAt({ ...moving, past: [] }, T0)).toBeNull()
   })
+  it('ignores forecast points at or before the latest fix', () => {
+    // 觀測點比預報新：最新觀測 27 日 03:00，+6h 預測點（02:00）已過時，03:00 → 08:00 之間不能改走舊預測點
+    const late = { ...moving, past: [...moving.past, fix(127.5, 22.5, { time: '2026-09-27T03:00:00+08:00', radius15ms: 90 })] }
+    expect(typhoonAt(late, T0 + 9.5 * H)).toEqual({ lon: 126.75, lat: 23.25, radius15ms: 90 })
+  })
 })
 
 describe('followGeoJSON', () => {

@@ -76,8 +76,10 @@ const stateOf = ({ lon, lat, radius15ms }: TyphoonFix): TyphoonState => ({ lon, 
 export function typhoonAt(t: Typhoon, time: number): TyphoonState | null {
   const now = t.past.at(-1)
   if (!now) return null
-  if (time <= Date.parse(now.time)) return stateOf(now)
-  const seq = [now, ...t.forecast]
+  const start = Date.parse(now.time)
+  if (time <= start) return stateOf(now)
+  // 觀測點可能比預報新；不晚於它的預測點已過時，留著會跳過觀測位置
+  const seq = [now, ...t.forecast.filter(f => Date.parse(f.time) > start)]
   for (let k = 1; k < seq.length; k++) {
     const a = seq[k - 1]
     const b = seq[k]
