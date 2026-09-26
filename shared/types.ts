@@ -63,12 +63,25 @@ export interface ForecastGrid {
   cells: GridCell[]
 }
 
-export type ImageKind = 'radar' | 'satellite'
+export type ImageKind = 'satellite'
 
 export interface ImageOverlay {
   kind: ImageKind
   url: string
   obsTime: string
+  bounds: Bounds
+}
+
+export interface RadarFrame {
+  /** CWA DateTime，+08:00 ISO 字串 */
+  time: string
+  /** /api/radar-frame?t=YYYYMMDDHHmm */
+  url: string
+}
+
+export interface RadarFrames {
+  /** 由舊到新，最多 19 格 */
+  frames: RadarFrame[]
   bounds: Bounds
 }
 

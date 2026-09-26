@@ -5,6 +5,7 @@ import {
   replaceObservations, listObservations, replaceForecasts, listTowns, getTownForecast,
   listGridTimes, getGrid, upsertImage, getImage, logFetch, getFetchedAt,
   replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile, replaceWarnings, listWarnings, replaceEarthquakes, listEarthquakes,
+  replaceRadarFrames, listRadarFrames,
 } from './repo.js'
 import type { Bounds } from '../shared/types.js'
 import {
@@ -70,12 +71,20 @@ describe('satellite tiles', () => {
   })
 })
 
+describe('radar frames', () => {
+  it('replaces the whole list and reads it back oldest first', () => {
+    replaceRadarFrames(db, ['2026-09-26T11:00:00+08:00'])
+    replaceRadarFrames(db, ['2026-09-26T11:30:00+08:00', '2026-09-26T11:20:00+08:00'])
+    expect(listRadarFrames(db)).toEqual(['2026-09-26T11:20:00+08:00', '2026-09-26T11:30:00+08:00'])
+  })
+})
+
 describe('images & fetch log', () => {
   it('stores image overlays', () => {
-    const radar = parseImage(fixture('O-A0058-005.json'), 'radar')
-    upsertImage(db, radar)
-    expect(getImage(db, 'radar')).toEqual(radar)
     expect(getImage(db, 'satellite')).toBeNull()
+    const satellite = parseImage(fixture('O-B0033-003.json'), 'satellite')
+    upsertImage(db, satellite)
+    expect(getImage(db, 'satellite')).toEqual(satellite)
   })
   it('records fetch times', () => {
     expect(getFetchedAt(db, 'observations')).toBeNull()

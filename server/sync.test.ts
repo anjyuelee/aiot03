@@ -4,9 +4,10 @@ import { fixture } from './__fixtures__/load.js'
 import { sampleKmz } from './__fixtures__/kmz.js'
 import { openDb, type DB } from './db.js'
 import type { Fetcher } from './cwa/client.js'
-import { syncObservations, syncForecast, syncImage, syncTyphoons, syncWarnings, syncEarthquakes } from './sync.js'
+import { syncObservations, syncForecast, syncImage, syncRadar, syncTyphoons, syncWarnings, syncEarthquakes } from './sync.js'
 import {
   listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons, listWarnings, listEarthquakes,
+  listRadarFrames,
 } from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
@@ -97,11 +98,6 @@ describe('syncForecast', () => {
 })
 
 describe('syncImage', () => {
-  it('stores radar metadata', async () => {
-    await syncImage(db, 'radar', fakeFetcher())
-    expect(getImage(db, 'radar')?.bounds).toEqual([115, 17.75, 126.5, 29.25])
-    expect(getFetchedAt(db, 'radar')).not.toBeNull()
-  })
   it('stores satellite metadata and level-2 tiles from the kmz', async () => {
     await syncImage(db, 'satellite', fakeFetcher())
     expect(getImage(db, 'satellite')?.obsTime).toBe('2026-09-23T19:50:00+08:00')
@@ -113,6 +109,36 @@ describe('syncImage', () => {
     await expect(syncImage(db, 'satellite', f)).rejects.toThrow('no satellite tiles')
     expect(getImage(db, 'satellite')).toBeNull()
     expect(getFetchedAt(db, 'satellite')).toBeNull()
+  })
+})
+
+describe('syncRadar', () => {
+  const withRadar = (json: unknown, calls: Record<string, string>[] = []): Fetcher => ({
+    dataset: async () => { throw new Error('unexpected dataset') },
+    file: async () => { throw new Error('unexpected file') },
+    bytes: noBytes,
+    async historyMetadata(id, params) {
+      if (id !== 'O-A0059-001') throw new Error(`unexpected history ${id}`)
+      calls.push(params)
+      return json
+    },
+    historyData: async () => { throw new Error('unexpected historyData') },
+  })
+
+  it('asks for four hours back in Taipei time and stores the latest 19 frames', async () => {
+    const calls: Record<string, string>[] = []
+    await syncRadar(db, withRadar(fixture('O-A0059-001-metadata.json'), calls), Date.parse('2026-09-26T04:00:00Z'))
+    expect(calls).toEqual([{ timeFrom: '2026-09-26T08:00:00' }])
+    const times = listRadarFrames(db)
+    expect(times).toHaveLength(19)
+    expect(times[18]).toBe('2026-09-26T11:50:00+08:00')
+    expect(getFetchedAt(db, 'radar')).not.toBeNull()
+  })
+  it('keeps the old list when CWA returns no frames', async () => {
+    await syncRadar(db, withRadar(fixture('O-A0059-001-metadata.json')))
+    const empty = { dataset: { success: 'true', resources: { resource: { data: { time: [] } } } } }
+    await expect(syncRadar(db, withRadar(empty))).rejects.toThrow('no radar frames')
+    expect(listRadarFrames(db)).toHaveLength(19)
   })
 })
 

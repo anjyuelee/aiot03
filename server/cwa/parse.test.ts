@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../__fixtures__/load.js'
 import {
-  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseTyphoons, parseWarnings, parseEarthquakes,
+  num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseRadarTimes, parseTyphoons, parseWarnings,
+  parseEarthquakes,
 } from './parse.js'
 
 describe('num', () => {
@@ -62,14 +63,6 @@ describe('parseForecastWeek', () => {
 })
 
 describe('parseImage', () => {
-  it('parses radar metadata', () => {
-    expect(parseImage(fixture('O-A0058-005.json'), 'radar')).toEqual({
-      kind: 'radar',
-      url: 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-005.png',
-      obsTime: '2026-09-23T19:20:00+08:00',
-      bounds: [115, 17.75, 126.5, 29.25],
-    })
-  })
   it('parses satellite metadata', () => {
     expect(parseImage(fixture('O-B0033-003.json'), 'satellite')).toEqual({
       kind: 'satellite',
@@ -77,6 +70,25 @@ describe('parseImage', () => {
       obsTime: '2026-09-23T19:50:00+08:00',
       bounds: [102, 0, 152, 50],
     })
+  })
+})
+
+describe('parseRadarTimes', () => {
+  const json = fixture('O-A0059-001-metadata.json')
+  it('keeps the latest 19 frames, oldest first', () => {
+    const times = parseRadarTimes(json)
+    expect(times).toHaveLength(19)
+    expect(times[0]).toBe('2026-09-26T08:50:00+08:00')
+    expect(times[18]).toBe('2026-09-26T11:50:00+08:00')
+  })
+  it('sorts frames that arrive out of order', () => {
+    const list = json.dataset.resources.resource.data.time
+    const shuffled = { dataset: { resources: { resource: { data: { time: [...list].reverse() } } } } }
+    expect(parseRadarTimes(shuffled)).toEqual(parseRadarTimes(json))
+  })
+  it('returns nothing for a response without frames', () => {
+    expect(parseRadarTimes({ dataset: { resources: { resource: { data: {} } } } })).toEqual([])
+    expect(parseRadarTimes({})).toEqual([])
   })
 })
 

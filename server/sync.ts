@@ -3,10 +3,12 @@ import type { ImageKind } from '../shared/types.js'
 import { cwa, type Fetcher } from './cwa/client.js'
 import { parseSatelliteKmz } from './cwa/kmz.js'
 import {
-  parseEarthquakes, parseForecast3h, parseForecastWeek, parseImage, parseRainStations, parseTyphoons, parseWarnings, parseWeatherStations,
+  parseEarthquakes, parseForecast3h, parseForecastWeek, parseImage, parseRadarTimes, parseRainStations, parseTyphoons, parseWarnings,
+  parseWeatherStations,
 } from './cwa/parse.js'
 import {
-  logFetch, replaceEarthquakes, replaceForecasts, replaceObservations, replaceSatelliteTiles, replaceTyphoons, replaceWarnings, upsertImage,
+  logFetch, replaceEarthquakes, replaceForecasts, replaceObservations, replaceRadarFrames, replaceSatelliteTiles, replaceTyphoons, replaceWarnings,
+  upsertImage,
 } from './repo.js'
 
 // F-D0047-001 起每 4 號一個縣市：+0 為 3 天預報、+2 為一週預報
@@ -16,7 +18,7 @@ const countyIds = (offset: number) =>
 // F-D0047-093 每次最多回傳 5 個縣市
 const CHUNK = 5
 
-const IMAGE_IDS: Record<ImageKind, string> = { radar: 'O-A0058-005', satellite: 'O-B0033-003' }
+const IMAGE_IDS: Record<ImageKind, string> = { satellite: 'O-B0033-003' }
 
 const now = () => new Date().toISOString()
 
@@ -51,17 +53,24 @@ export async function syncForecast(db: DB, f: Fetcher = cwa): Promise<void> {
 
 export async function syncImage(db: DB, kind: ImageKind, f: Fetcher = cwa): Promise<void> {
   const meta = parseImage(await f.file(IMAGE_IDS[kind]), kind)
-  if (kind === 'radar') {
+  const tiles = parseSatelliteKmz(await f.bytes(meta.url))
+  if (tiles.length === 0) throw new Error('CWA returned no satellite tiles')
+  db.transaction(() => {
     upsertImage(db, meta)
-  } else {
-    const tiles = parseSatelliteKmz(await f.bytes(meta.url))
-    if (tiles.length === 0) throw new Error('CWA returned no satellite tiles')
-    db.transaction(() => {
-      upsertImage(db, meta)
-      replaceSatelliteTiles(db, tiles)
-    })()
-  }
+    replaceSatelliteTiles(db, tiles)
+  })()
   logFetch(db, kind, now())
+}
+
+const HOUR = 3600_000
+
+// 最新一格約晚 6～7 分鐘才出現，多查一小時才湊得滿 19 格；timeFrom 為臺北時間、不帶時區
+export async function syncRadar(db: DB, f: Fetcher = cwa, at = Date.now()): Promise<void> {
+  const timeFrom = new Date(at + 8 * HOUR - 4 * HOUR).toISOString().slice(0, 19)
+  const times = parseRadarTimes(await f.historyMetadata('O-A0059-001', { timeFrom }))
+  if (times.length === 0) throw new Error('CWA returned no radar frames')
+  replaceRadarFrames(db, times)
+  logFetch(db, 'radar', now())
 }
 
 // 無活動中颱風時 CWA 回傳空清單，照樣清空舊資料

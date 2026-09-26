@@ -82,6 +82,18 @@ export function getImage(db: DB, kind: ImageKind): ImageOverlay | null {
   return r ? { kind: r.kind, url: r.url, obsTime: r.obs_time, bounds: [r.west, r.south, r.east, r.north] } : null
 }
 
+export function replaceRadarFrames(db: DB, times: string[]): void {
+  const insert = db.prepare('INSERT INTO radar_frames (time) VALUES (?)')
+  db.transaction(() => {
+    db.prepare('DELETE FROM radar_frames').run()
+    for (const t of times) insert.run(t)
+  })()
+}
+
+export function listRadarFrames(db: DB): string[] {
+  return (db.prepare('SELECT time FROM radar_frames ORDER BY time').all() as { time: string }[]).map(r => r.time)
+}
+
 export function replaceSatelliteTiles(db: DB, tiles: SatelliteTileRow[]): void {
   const insert = db.prepare('INSERT INTO satellite_tiles (id, png, west, south, east, north) VALUES (?, ?, ?, ?, ?, ?)')
   db.transaction(() => {

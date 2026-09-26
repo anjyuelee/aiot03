@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS forecast_week (
   town_id TEXT, start_time TEXT, end_time TEXT, min_temp REAL, max_temp REAL,
   pop REAL, wx TEXT, wx_code TEXT, PRIMARY KEY (town_id, start_time));
 CREATE TABLE IF NOT EXISTS images (kind TEXT PRIMARY KEY, url TEXT, obs_time TEXT, west REAL, south REAL, east REAL, north REAL);
+CREATE TABLE IF NOT EXISTS radar_frames (time TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS satellite_tiles (id TEXT PRIMARY KEY, png BLOB, west REAL, south REAL, east REAL, north REAL);
 CREATE TABLE IF NOT EXISTS typhoons (id TEXT PRIMARY KEY, json TEXT);
 CREATE TABLE IF NOT EXISTS warnings (

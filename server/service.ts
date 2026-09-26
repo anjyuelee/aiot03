@@ -1,13 +1,15 @@
 import type {
-  ApiResponse, Earthquake, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+  ApiResponse, Earthquake, ForecastGrid, Observation, RadarFrames, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
 } from '../shared/types.js'
+import { RADAR_BOUNDS } from '../shared/radar.js'
 import { getDb } from './db.js'
 import { ensureFresh } from './freshness.js'
 import {
-  getGrid, getImage, getSatelliteTile, getTownForecast, listEarthquakes, listGridTimes, listObservations, listSatelliteTiles, listTowns, listTyphoons,
-  listWarnings,
+  getGrid, getImage, getSatelliteTile, getTownForecast, listEarthquakes, listGridTimes, listObservations, listRadarFrames, listSatelliteTiles, listTowns,
+  listTyphoons, listWarnings,
 } from './repo.js'
-import { syncEarthquakes, syncForecast, syncImage, syncObservations, syncTyphoons, syncWarnings } from './sync.js'
+import { syncEarthquakes, syncForecast, syncImage, syncObservations, syncRadar, syncTyphoons, syncWarnings } from './sync.js'
+import { frameKey } from './radar.js'
 
 export async function getObservations(): Promise<ApiResponse<Observation[]>> {
   const db = getDb()
@@ -36,11 +38,13 @@ export async function getForecastGrid(time: string | null): Promise<ApiResponse<
   return { data: { times: listGridTimes(db), time, cells: time ? getGrid(db, time) : [] }, ...meta }
 }
 
-export async function getImageOverlay(kind: 'radar'): Promise<ApiResponse<ImageOverlay> | null> {
+export async function getRadar(): Promise<ApiResponse<RadarFrames> | null> {
   const db = getDb()
-  const meta = await ensureFresh(db, kind, () => syncImage(db, kind))
-  const data = getImage(db, kind)
-  return data ? { data, ...meta } : null
+  const meta = await ensureFresh(db, 'radar', () => syncRadar(db))
+  const times = listRadarFrames(db)
+  if (times.length === 0) return null
+  const frames = times.map(time => ({ time, url: `/api/radar-frame?t=${frameKey(time)}` }))
+  return { data: { frames, bounds: RADAR_BOUNDS }, ...meta }
 }
 
 export async function getSatellite(): Promise<ApiResponse<SatelliteOverlay> | null> {

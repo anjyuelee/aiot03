@@ -1,0 +1,51 @@
+{
+ "dataset": {
+  "success": "true",
+  "result": {
+   "resource_id": "O-A0059-001",
+   "fields": [
+    {
+     "id": "DateTime",
+     "type": "Timestamp"
+    },
+    {
+     "id": "UpdateTime",
+     "type": "Timestamp"
+    },
+    {
+     "id": "ProductURL",
+     "type": "String"
+    }
+   ]
+  },
+  "resources": {
+   "resource": {
+    "data": {
+     "time": [
+       {"DateTime":"2026-09-26T08:30:00+08:00","UpdateTime":"2026-09-26T08:36:45+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/08/30/00"},
+       {"DateTime":"2026-09-26T08:40:00+08:00","UpdateTime":"2026-09-26T08:46:37+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/08/40/00"},
+       {"DateTime":"2026-09-26T08:50:00+08:00","UpdateTime":"2026-09-26T08:56:46+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/08/50/00"},
+       {"DateTime":"2026-09-26T09:00:00+08:00","UpdateTime":"2026-09-26T09:06:41+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/09/00/00"},
+       {"DateTime":"2026-09-26T09:10:00+08:00","UpdateTime":"2026-09-26T09:16:49+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/09/10/00"},
+       {"DateTime":"2026-09-26T09:20:00+08:00","UpdateTime":"2026-09-26T09:26:45+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/09/20/00"},
+       {"DateTime":"2026-09-26T09:30:00+08:00","UpdateTime":"2026-09-26T09:36:32+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/09/30/00"},
+       {"DateTime":"2026-09-26T09:40:00+08:00","UpdateTime":"2026-09-26T09:46:35+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/09/40/00"},
+       {"DateTime":"2026-09-26T09:50:00+08:00","UpdateTime":"2026-09-26T09:56:49+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/09/50/00"},
+       {"DateTime":"2026-09-26T10:00:00+08:00","UpdateTime":"2026-09-26T10:06:42+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/10/00/00"},
+       {"DateTime":"2026-09-26T10:10:00+08:00","UpdateTime":"2026-09-26T10:16:32+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/10/10/00"},
+       {"DateTime":"2026-09-26T10:20:00+08:00","UpdateTime":"2026-09-26T10:26:44+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/10/20/00"},
+       {"DateTime":"2026-09-26T10:30:00+08:00","UpdateTime":"2026-09-26T10:36:32+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/10/30/00"},
+       {"DateTime":"2026-09-26T10:40:00+08:00","UpdateTime":"2026-09-26T10:46:42+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/10/40/00"},
+       {"DateTime":"2026-09-26T10:50:00+08:00","UpdateTime":"2026-09-26T10:57:36+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/10/50/00"},
+       {"DateTime":"2026-09-26T11:00:00+08:00","UpdateTime":"2026-09-26T11:06:51+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/11/00/00"},
+       {"DateTime":"2026-09-26T11:10:00+08:00","UpdateTime":"2026-09-26T11:16:38+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/11/10/00"},
+       {"DateTime":"2026-09-26T11:20:00+08:00","UpdateTime":"2026-09-26T11:26:49+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/11/20/00"},
+       {"DateTime":"2026-09-26T11:30:00+08:00","UpdateTime":"2026-09-26T11:36:41+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/11/30/00"},
+       {"DateTime":"2026-09-26T11:40:00+08:00","UpdateTime":"2026-09-26T11:46:51+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/11/40/00"},
+       {"DateTime":"2026-09-26T11:50:00+08:00","UpdateTime":"2026-09-26T11:56:44+08:00","ProductURL":"https://opendata.cwa.gov.tw/historyapi/v1/getData/O-A0059-001/2026/09/26/11/50/00"}
+      ]
+    }
+   }
+  }
+ }
+}

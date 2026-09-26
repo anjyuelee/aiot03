@@ -138,13 +138,16 @@ function range(s: string): [number, number] {
 
 export function parseImage(json: any, kind: ImageKind): ImageOverlay {
   const ds = json.cwaopendata.dataset
-  const geo = kind === 'radar' ? ds.datasetInfo.parameterSet : ds.GeoInfo
-  const [west, east] = range(geo.LongitudeRange)
-  const [south, north] = range(geo.LatitudeRange)
+  const [west, east] = range(ds.GeoInfo.LongitudeRange)
+  const [south, north] = range(ds.GeoInfo.LatitudeRange)
   const bounds: Bounds = [west, south, east, north]
-  return kind === 'radar'
-    ? { kind, url: ds.resource.ProductURL, obsTime: ds.DateTime, bounds }
-    : { kind, url: ds.Resource.ProductURL, obsTime: ds.ObsTime.Datetime, bounds }
+  return { kind, url: ds.Resource.ProductURL, obsTime: ds.ObsTime.Datetime, bounds }
+}
+
+/** historyapi metadata → 最近 count 格的 DateTime（+08:00 ISO），由舊到新 */
+export function parseRadarTimes(json: any, count = 19): string[] {
+  const list: any[] = json.dataset?.resources?.resource?.data?.time ?? []
+  return list.map(t => t.DateTime).filter((t): t is string => typeof t === 'string').sort().slice(-count)
 }
 
 const HOUR = 3600_000
