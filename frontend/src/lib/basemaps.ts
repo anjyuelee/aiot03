@@ -20,6 +20,10 @@ export interface Basemap {
   style: () => Promise<string | StyleSpecification>
 }
 
+// 國土測繪中心圖磚在台灣以外整片填不透明的深藍綠色，低縮放時會蓋住周邊的 Sentinel-2 形成一塊矩形；
+// Sentinel-2 為 10 公尺解析度，放大到街區才需要改用正射影像
+const NLSC_MINZOOM = 14
+
 /** 衛星影像上只保留深色底圖的地名標籤，資料圖層才能照常插在文字之下 */
 async function satelliteStyle(): Promise<StyleSpecification> {
   const labels = (await (await fetch(`${CARTO}/dark-matter-gl-style/style.json`)).json()) as StyleSpecification
@@ -27,15 +31,16 @@ async function satelliteStyle(): Promise<StyleSpecification> {
     ...labels,
     sources: {
       ...labels.sources,
-      // 全球用 Sentinel-2 無雲影像，台灣本島再疊國土測繪中心的高解析正射影像
+      // 全球用 Sentinel-2 無雲影像，放大到街區時台灣再疊國土測繪中心的高解析正射影像
       s2: { type: 'raster', tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg'], tileSize: 256, maxzoom: 15,
         attribution: 'Sentinel-2 cloudless 2020 by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)' },
-      nlsc: { type: 'raster', tiles: ['https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}'], tileSize: 256, minzoom: 7, maxzoom: 19,
+      nlsc: { type: 'raster', tiles: ['https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}'], tileSize: 256, minzoom: NLSC_MINZOOM, maxzoom: 19,
         bounds: [118, 21.5, 122.5, 26.5], attribution: '內政部國土測繪中心' },
     },
     layers: [
       { id: 's2', type: 'raster', source: 's2' },
-      { id: 'nlsc', type: 'raster', source: 'nlsc' },
+      // 圖層也設 minzoom：縮小時先前載入的圖磚仍會被沿用，只設在 source 擋不住
+      { id: 'nlsc', type: 'raster', source: 'nlsc', minzoom: NLSC_MINZOOM },
       ...labels.layers.filter(l => l.type === 'symbol'),
     ],
   }
