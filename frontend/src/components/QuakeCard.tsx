@@ -1,7 +1,40 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import type { Earthquake } from '../../../shared/types'
 import { useEarthquakes } from '../api'
 import { useStore } from '../store'
 import { INTENSITY_LEGEND, fmtMagnitude, fmtQuakeTime, intensityColor, maxIntensity, pickQuake } from '../lib/quakes'
+
+// 大地震可達十幾個縣市，預設只列震度最大的幾個（CWA 已依震度由大到小排），近期清單才不會被擠到很下面
+const COUNTY_PREVIEW = 5
+
+/** 各縣市震度；以地震 id 當 key 掛載，切換地震時展開狀態自動重設 */
+function QuakeCounties({ quake }: { quake: Earthquake }) {
+  const [all, setAll] = useState(false)
+  const rest = quake.counties.length - COUNTY_PREVIEW
+  const shown = all || rest <= 0 ? quake.counties : quake.counties.slice(0, COUNTY_PREVIEW)
+  return (
+    <section className="quake-counties">
+      {shown.map(c => (
+        <details key={c.county}>
+          <summary>
+            <span className="dot" style={{ background: intensityColor(c.intensity) }} />
+            <span>{c.county}</span>
+            <span className="muted">{c.intensity}</span>
+          </summary>
+          <ul>
+            {c.stations.map(s => (
+              <li key={s.id}><span>{s.name}</span><span className="muted">{s.intensity}</span></li>
+            ))}
+          </ul>
+        </details>
+      ))}
+      {!all && rest > 0 && <button className="quake-more" onClick={() => setAll(true)}>顯示其餘 {rest} 縣市</button>}
+      <div className="quake-legend">
+        {INTENSITY_LEGEND.map(l => <span key={l.label} style={{ background: l.color }}>{l.label}</span>)}
+      </div>
+    </section>
+  )
+}
 
 export default function QuakeCard() {
   const q = useEarthquakes()
@@ -29,25 +62,7 @@ export default function QuakeCard() {
             </div>
             {sel.web && <a href={sel.web} target="_blank" rel="noreferrer">CWA 報告 ↗</a>}
           </section>
-          <section className="quake-counties">
-            {sel.counties.map(c => (
-              <details key={`${sel.id}:${c.county}`}>
-                <summary>
-                  <span className="dot" style={{ background: intensityColor(c.intensity) }} />
-                  <span>{c.county}</span>
-                  <span className="muted">{c.intensity}</span>
-                </summary>
-                <ul>
-                  {c.stations.map(s => (
-                    <li key={s.id}><span>{s.name}</span><span className="muted">{s.intensity}</span></li>
-                  ))}
-                </ul>
-              </details>
-            ))}
-            <div className="quake-legend">
-              {INTENSITY_LEGEND.map(l => <span key={l.label} style={{ background: l.color }}>{l.label}</span>)}
-            </div>
-          </section>
+          <QuakeCounties key={sel.id} quake={sel} />
           <section className="quake-list">
             <h3>近期地震</h3>
             <ul>

@@ -12,6 +12,9 @@ const EPICENTERS = 'quake-epicenters'
 const SELECTED = 'quake-selected'
 const STAR = 'quake-star'
 
+// 上次縮放到的地震：換底圖時整個圖層會卸載再掛上，靠它避免把使用者移動過的視角又拉回去；離開地震圖層才清掉
+let fittedId: string | null = null
+
 /** 紅色白邊五角星；用 canvas 畫，不依賴底圖字型有沒有 ★ */
 function starImage(size = 48): ImageData {
   const canvas = document.createElement('canvas')
@@ -49,11 +52,12 @@ export default function QuakeLayer({ map, list }: { map: MlMap; list: Earthquake
     if (!map.hasImage(STAR)) map.addImage(STAR, starImage(), { pixelRatio: 2 })
     map.addSource(SRC, { type: 'geojson', data: latest.current.data })
     map.addLayer({ id: STATIONS, type: 'circle', source: SRC, filter: ['==', ['get', 'role'], 'station'],
-      paint: { 'circle-radius': 5, 'circle-color': ['get', 'color'], 'circle-stroke-color': ink, 'circle-stroke-width': 0.5 } }, before)
+      paint: { 'circle-radius': 4, 'circle-color': ['get', 'color'], 'circle-stroke-color': ink, 'circle-stroke-width': 0.5 } }, before)
     map.addLayer({ id: EPICENTERS, type: 'circle', source: SRC,
       filter: ['all', ['==', ['get', 'role'], 'epicenter'], ['!', ['get', 'selected']]],
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['get', 'magnitude'], 2, 4, 6, 16],
+        // 最小的震央（M2）直徑也是測站的兩倍，兩者才不會混淆
+        'circle-radius': ['interpolate', ['linear'], ['get', 'magnitude'], 2, 8, 6, 18],
         'circle-color': ['get', 'color'],
         'circle-opacity': 0.5,
         'circle-stroke-color': ink,
@@ -92,13 +96,19 @@ export default function QuakeLayer({ map, list }: { map: MlMap; list: Earthquake
     (map.getSource(SRC) as GeoJSONSource | undefined)?.setData(data)
   }, [map, data])
 
-  // 選取的地震換了才縮放（含切入圖層的預設選取）；同一筆重新取得資料不再移動畫面
+  // 選取的地震換了才縮放（含切入圖層的預設選取）；同一筆重新取得資料或換底圖都不再移動畫面
   useEffect(() => {
     const q = latest.current.selected
-    if (!q) return
+    if (!q || q.id === fittedId) return
+    fittedId = q.id
     const [w, s, e, n] = quakeBounds(q)
     map.fitBounds([[w, s], [e, n]], { padding: cardFitPadding(), maxZoom: 9 })
   }, [map, selectedId])
+
+  // 卸載時已離開地震圖層就清掉紀錄，下次切進來會重新縮放；換底圖造成的卸載仍在地震圖層，保留紀錄
+  useEffect(() => () => {
+    if (useStore.getState().layer !== 'quake') fittedId = null
+  }, [])
 
   return null
 }
