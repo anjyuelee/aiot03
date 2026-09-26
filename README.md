@@ -20,6 +20,10 @@
 |---|---|
 | ![颱風](docs/screenshots/typhoon.png) | <img src="docs/screenshots/typhoon-mobile.png" width="260" alt="颱風手機版"> |
 
+| 颱風跟著時間軸移動（風圖層 +24 小時；中心與七級風暴風圈沿預測路徑內插） |
+|---|
+| ![颱風跟隨時間軸](docs/screenshots/typhoon-follow.png) |
+
 | 行政區（縣市／鄉鎮界線與中文名稱） | 逐層選取（點縣市再點鄉鎮，選到的區塊填色） |
 |---|---|
 | ![行政區](docs/screenshots/admin.png) | ![逐層選取](docs/screenshots/admin-town.png) |
