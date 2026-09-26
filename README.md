@@ -1,6 +1,6 @@
 # 台灣天氣地圖（CWA Open Data）
 
-類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波（過去 3 小時回放）、衛星雲圖與颱風路徑。
+類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波（過去 3 小時回放）、衛星雲圖、颱風路徑、天氣特報與地震。
 
 🌐 **線上網址：<https://aiot03.vercel.app>**
 
@@ -27,6 +27,12 @@
 | 底圖切換（右下角：深色／淺色／街道／衛星／地形；圖為衛星底圖＋雷達） |
 |---|
 | ![底圖切換](docs/screenshots/basemap.png) |
+
+| 特報（縣市依最嚴重種類著色，資訊卡依種類列出縣市與有效時間） | 特報描邊（其他天氣圖層上以同色描邊標示特報縣市；圖為雷達） |
+|---|---|
+| ![特報](docs/screenshots/warning.png) | ![特報描邊](docs/screenshots/warning-outline.png) |
+
+特報兩張圖為示意，以測試資料模擬宜蘭、花蓮、臺北、連江的特報。
 
 | 地震（震央依規模與最大震度上色；選取的地震以星號標示、測站依震度上色，資訊卡列出各縣市震度與近期清單） |
 |---|
@@ -56,10 +62,10 @@
 flowchart LR
   subgraph Browser["瀏覽器（React + Vite SPA）"]
     direction TB
-    UI["UI 元件<br/>SearchBox · Breadcrumb · LayerPicker · Timeline<br/>LocationCard · StatusBadge · Legend"]
+    UI["UI 元件<br/>SearchBox · Breadcrumb · LayerPicker · Timeline<br/>LocationCard · TyphoonCard · WarningCard · QuakeCard<br/>StatusBadge · WarningBadge · QuakeBadge · Legend"]
     Store["Zustand store<br/>layer / t / town ⇄ URL"]
     Query["TanStack Query<br/>定期 refetch / 快取"]
-    Render["繪圖 lib<br/>IDW 熱圖 · 風粒子 · 鄉鎮 choropleth<br/>縣市／鄉鎮界線 · Mercator 重投影 · 雲層處理"]
+    Render["繪圖 lib<br/>IDW 熱圖 · 風粒子 · 鄉鎮 choropleth<br/>縣市／鄉鎮界線 · 特報著色／描邊 · Mercator 重投影 · 雲層處理"]
     Map["MapLibre GL"]
     UI <--> Store
     Store --> Query
