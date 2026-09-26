@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { badgeText, fmtValid, groupByKind, severityOf, worstByCounty } from './warnings'
+import { badgeText, countyColor, fmtValid, groupByKind, severityOf, worstByCounty } from './warnings'
 import type { Warning } from '../../../shared/types'
 
 const w = (countyCode: string, county: string, phenomena: string, extra: Partial<Warning> = {}): Warning => ({
@@ -18,12 +18,22 @@ describe('severityOf', () => {
 })
 
 describe('worstByCounty', () => {
-  it('keeps the most severe colour per county', () => {
+  it('keeps the most severe warning per county', () => {
     const m = worstByCounty([w('10002', '宜蘭縣', '大雨'), w('10002', '宜蘭縣', '豪雨'), w('10015', '花蓮縣', '濃霧')])
-    expect(m.get('10002')).toBe(severityOf('豪雨').color)
-    expect(m.get('10015')).toBe(severityOf('濃霧').color)
+    expect(m.get('10002')).toEqual(severityOf('豪雨'))
+    expect(m.get('10015')).toEqual(severityOf('濃霧'))
     expect(m.size).toBe(2)
-    expect(worstByCounty([w('10002', '宜蘭縣', '豪雨'), w('10002', '宜蘭縣', '陸上強風')]).get('10002')).toBe(severityOf('豪雨').color)
+    expect(worstByCounty([w('10002', '宜蘭縣', '豪雨'), w('10002', '宜蘭縣', '陸上強風')]).get('10002')).toEqual(severityOf('豪雨'))
+  })
+})
+
+describe('countyColor', () => {
+  it('is transparent without warnings', () => {
+    expect(countyColor([])).toBe('rgba(0,0,0,0)')
+  })
+  it('matches each county to its most severe colour', () => {
+    expect(countyColor([w('10002', '宜蘭縣', '大雨'), w('10002', '宜蘭縣', '豪雨'), w('10015', '花蓮縣', '濃霧')])).toEqual(
+      ['match', ['get', 'COUNTYCODE'], '10002', severityOf('豪雨').color, '10015', severityOf('濃霧').color, 'rgba(0,0,0,0)'])
   })
 })
 

@@ -1,3 +1,4 @@
+import type { ExpressionSpecification } from 'maplibre-gl'
 import type { Warning } from '../../../shared/types'
 import { fmtMD } from './format'
 
@@ -19,15 +20,28 @@ export function severityOf(phenomena: string): Severity {
   return LEVELS.find(([k]) => phenomena.includes(k))?.[1] ?? OTHER
 }
 
-/** 每個縣市取最嚴重特報的顏色 */
-export function worstByCounty(list: Warning[]): Map<string, string> {
+/** 每個縣市取最嚴重的特報 */
+export function worstByCounty(list: Warning[]): Map<string, Severity> {
   const best = new Map<string, Severity>()
   for (const w of list) {
     const s = severityOf(w.phenomena)
     if ((best.get(w.countyCode)?.rank ?? -1) < s.rank) best.set(w.countyCode, s)
   }
-  return new Map([...best].map(([code, s]) => [code, s.color]))
+  return best
 }
+
+const NONE = 'rgba(0,0,0,0)'
+
+/** 依縣市代碼對應最嚴重特報的 match 運算式；match 至少要一組對應，沒有特報時直接回傳預設值 */
+function byCounty<T extends string | number>(list: Warning[], pick: (s: Severity) => T, fallback: T): T | ExpressionSpecification {
+  const pairs = [...worstByCounty(list)].flatMap(([code, s]) => [code, pick(s)])
+  if (pairs.length === 0) return fallback
+  const expr: unknown[] = ['match', ['get', 'COUNTYCODE'], ...pairs, fallback]
+  return expr as ExpressionSpecification
+}
+
+/** 有特報的縣市給最嚴重種類的顏色，其餘透明；特報填色與描邊共用 */
+export const countyColor = (list: Warning[]) => byCounty(list, s => s.color, NONE)
 
 export interface WarningGroup { title: string; color: string; rank: number; items: Warning[] }
 
