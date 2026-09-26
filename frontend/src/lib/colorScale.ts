@@ -1,4 +1,6 @@
-export type ScaleId = 'temp' | 'wind' | 'rain1h' | 'pop' | 'humidity'
+import { RADAR_COLORS } from '../../../shared/radar'
+
+export type ScaleId = 'temp' | 'wind' | 'rain1h' | 'pop' | 'humidity' | 'radar'
 export type Stops = [number, string][]
 export type RGBA = [number, number, number, number]
 
@@ -8,6 +10,8 @@ export const SCALES: Record<ScaleId, { unit: string; stops: Stops }> = {
   rain1h: { unit: 'mm/h', stops: [[0, '#00000000'], [0.5, '#a5d8ff'], [2, '#4dabf7'], [5, '#1c7ed6'], [10, '#5f3dc4'], [20, '#c2255c'], [40, '#e8590c']] },
   pop: { unit: '% 降雨機率', stops: [[0, '#00000000'], [20, '#a5d8ff'], [50, '#4dabf7'], [80, '#1c7ed6'], [100, '#5f3dc4']] },
   humidity: { unit: '%', stops: [[30, '#e8590c'], [50, '#fcc419'], [70, '#69db7c'], [85, '#22b8cf'], [100, '#1864ab']] },
+  // 與 server 上色共用 CWA 色標，每個 dBZ 一個 stop
+  radar: { unit: 'dBZ', stops: RADAR_COLORS.map((rgb, dbz) => [dbz, `#${rgb.map(v => v.toString(16).padStart(2, '0')).join('')}`]) },
 }
 
 export function parseHex(hex: string): RGBA {
