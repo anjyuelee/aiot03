@@ -14,7 +14,7 @@
 | 內插 | 位置與七級風半徑在觀測點、預測點之間依時間線性內插；氣壓、風速不內插、不顯示 |
 | 超出預測 | 時刻晚於最後一個預測點時不畫中心與風圈，不外推 |
 | 點擊 | 颱風圖層不參與點擊，點地圖照常逐層選取縣市、鄉鎮 |
-| 圖層順序 | 由下往上：資料圖層（熱圖、預報色階）→ 颱風 → 界線與特報描邊 → 選取外框 → 地名。不論誰先加入、換不換底圖都成立 |
+| 圖層順序 | 由下往上：資料圖層（熱圖、預報色階）→ 颱風（風圈、路徑、中心）→ 界線與特報描邊 → 選取外框 → 地名 → 颱風名稱。不論誰先加入、換不換底圖都成立 |
 | 視角 | 不自動縮放、不加畫面外提示 |
 | 資料 | 沿用 `useTyphoons`（`/api/typhoon`），不增加 API |
 
@@ -65,7 +65,7 @@ Props：`{ map, list, times, pos }`，`pos` 為 `DataLayers` 量化成 1/20 格�
 | `typhoon-follow` | `toGeoJSON(list)`，只用其中 `track-past`、`track-forecast` 兩種線 | 清單或底圖線色改變時重建 |
 | `typhoon-follow-now` | `followGeoJSON(list, times, pos)` | 建立時帶入目前值；之後 `list`、`times`、`pos` 改變時 `setData` |
 
-圖層依序以 `overlayBefore(map)` 插入（先加的在下）：
+名稱以外的圖層依序以 `overlayBefore(map)` 插入（先加的在下）；名稱是 symbol 圖層，放在最上層（不指定 `before`，同 `AdminLayer` 的地名）。若也插在界線之下，它會成為最下面的 symbol 圖層，`Boundaries` 重建時以 `firstSymbolLayer` 找插入點，界線就會插進颱風中心與名稱之間：
 
 | 圖層 | 型態 | 樣式 |
 |---|---|---|
@@ -74,7 +74,7 @@ Props：`{ map, list, times, pos }`，`pos` 為 `DataLayers` 量化成 1/20 格�
 | `typhoon-follow-past` | line，`role == track-past` | `line-color: ink`，`line-width: 1`，`line-opacity: 0.6` |
 | `typhoon-follow-forecast` | line，`role == track-forecast` | 同上，加 `line-dasharray: [2, 2]` |
 | `typhoon-follow-center` | circle，`role == center` | `circle-radius: 6`，`circle-color: #fa5252`，`circle-stroke-color: #ffffff`，`circle-stroke-width: 2` |
-| `typhoon-follow-label` | symbol，`role == center` | `text-field: name`，`text-font` 同 `AdminLayer`，`text-size: 12`，`text-anchor: left`，`text-offset: [0.8, 0]`，`text-allow-overlap: true`；`text-color: ink`，halo 深色底圖為 `rgba(0,0,0,0.75)`、淺色底圖為 `rgba(255,255,255,0.85)`，`text-halo-width: 1.5` |
+| `typhoon-follow-label` | symbol，`role == center`，最上層 | `text-field: name`，`text-font` 同 `AdminLayer`，`text-size: 12`，`text-anchor: left`，`text-offset: [0.8, 0]`，`text-allow-overlap: true`；`text-color: ink`，halo 深色底圖為 `rgba(0,0,0,0.75)`、淺色底圖為 `rgba(255,255,255,0.85)`，`text-halo-width: 1.5` |
 
 `ink` 為 `inkOf(basemap)`。不綁任何滑鼠事件。cleanup 移除所有圖層與兩個 source。換底圖時 `MapView` 卸下再掛回 `DataLayers`，颱風群組跟著重建。
 
