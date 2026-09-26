@@ -146,7 +146,7 @@ export interface RadarFrames {
 
 ### 4.2 解析
 
-- `parseRadarTimes(json): string[]`（`server/cwa/parse.ts`）：取 `time[].DateTime`，排序後回傳最後 19 筆。
+- `parseRadarTimes(json): string[]`（`server/cwa/parse.ts`）：取 `time[].DateTime`，去重（重複的時間會讓 `radar_frames` 的 primary key 整批寫入失敗）、排序後回傳最後 19 筆。
 - `parseRadarGrid(xml: string, nx = 921, ny = 881): Float32Array`（`server/radar.ts`）：以正規表示式取 `GridDimensionX/Y` 與 `<content>`；維度不是 `nx`×`ny`、或數值個數不是 `nx * ny` 時拋錯。預期維度做成參數，測試才能用小尺寸字串。
 - `radarRgba(values: Float32Array, nx = 921, ny = 881): Uint8Array`（`server/radar.ts`）：`nx`×`ny` RGBA，**北在上**（第 0 列為最北），`radarColor` 為 `null` 時 alpha 0，否則 alpha 255。
 
@@ -178,7 +178,7 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 
 | 情況 | 回應 |
 |---|---|
-| `t` 不是 12 位數字，或分鐘不是 10 的倍數 | 400 JSON，`no-store` |
+| `t` 不是 12 位數字，或月（01–12）、日（01–31）、時（00–23）、分（00–50，10 的倍數）超出範圍 | 400 JSON，`no-store` |
 | 正常 | `historyData('O-A0059-001', 'YYYY/MM/DD/HH/mm/00')` → `parseRadarGrid` → `radarRgba` → `encodePng`；200 `image/png`，`cache-control: public, max-age=31536000, s-maxage=31536000, immutable` |
 | CWA 404（`NotFoundError`） | 404 JSON，`cache-control: public, s-maxage=60` |
 | CWA 逾時或其他錯誤 | 502 JSON，`no-store` |
@@ -200,9 +200,12 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 
 - `agoLabel(time, latest): string`：0 → `''`；< 60 分 → `40 分鐘前`；整小時 → `2 小時前`；其他 → `1 小時 20 分前`。
 - `hourTicks(times): number[]`：分鐘為 00 的格子 index。
-- `advanceRadar(pos, dt, n)`：位置以「距離現在的格數」表示（0 = 現在，−(n−1) = 最舊）。每格 500 ms；超過 0 之後再停 1.5 秒（即允許到 +3 格的虛擬位置），之後回到 −(n−1)。
+- `radarStart(n)`：`−(n−1) − 0.5`，播放起點。`radarIndex` 以四捨五入換格，從最舊一格的前半格開始，每格才都停滿 500 ms。
+- `advanceRadar(pos, dt, n)`：位置以「距離現在的格數」表示（0 = 現在，−(n−1) = 最舊）。每格 500 ms；「現在」停滿 500 ms 後再停 1.5 秒（位置到 +3.5），之後回到 `radarStart(n)`。
 - `radarIndex(pos, n)`：`clamp(n − 1 + Math.round(pos), 0, n − 1)`，把位置轉成 frames 的 index（虛擬停留區間對應最後一格）。
 - `snapRadar(pos)`：`Math.min(0, Math.round(pos))`，停下或放開時對齊整格，停留區間算「現在」。
+- `trackPos(pos, n)`：`clamp(n − 1 + pos, 0, n − 1)`，滑桿位置；起點的前半格、停留區間與清單變短時都夾在軌道內。
+- `nearestLoaded(items, index)`：該格已載入就用它，否則用時間在它之前、最接近的已載入格；都沒有回 `null`。
 
 ### 5.3 狀態（`frontend/src/store.ts`）
 
@@ -213,7 +216,7 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 ### 5.4 地圖（`frontend/src/components/RadarLayer.tsx`）
 
 - 雷達圖層時 mount；一個 canvas source `radar`（`animate: false`，座標為 `RADAR_BOUNDS`）加一個 raster layer（`raster-opacity` 0.9、`raster-fade-duration` 0），插在 `dataLayerBefore(map)` 之前。
-- 顯示用 canvas 尺寸同重投影後的格子。目前格（`radarIndex(radarPos, n)`）載入完成時：`clearRect` → `drawImage` → `source.play(); source.pause();`（MapLibre 的 `pause()` 會先 `prepare()` 上傳 texture，`play()` 觸發重畫）。目前格尚未載入或載入失敗時不重畫，保留上一張。
+- 顯示用 canvas 尺寸同重投影後的格子。目前格（`radarIndex(radarPos, n)`）載入完成時：`clearRect` → `drawImage` → `source.play(); source.pause();`（MapLibre 的 `pause()` 會先 `prepare()` 上傳 texture，`play()` 觸發重畫）。目前格尚未載入或載入失敗時改畫 `nearestLoaded`（之前最接近的已載入格），第一次開啟時最新一格較慢也不會是空白地圖；一格都沒有時不重畫。
 - unmount 時移除 layer 與 source。
 - `DataLayers.tsx`：移除雷達的 `useOverlay`／`useReprojected`／`useImageOverlay(map, 'image', …)`，改為 `{layer === 'radar' && <RadarLayer map={map} />}`。
 
@@ -227,8 +230,8 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 - 標籤：最後一格主字「現在」、副字「HH:mm 觀測」；其他格主字 `HH:mm`、副字 `agoLabel`。
 - 拖曳、方向鍵、Home／End 同預報時間軸；放開時對齊最近一格。
 - 尚未載入的格子刻度變淡，失敗的格子刻度標為失敗色；19 格全部有結果（成功或失敗）前不能開始播放；播放中一律可以暫停（清單更新多出的新格載入中時也可以，`canToggleRadar`）。
-- 播放用 `requestAnimationFrame` 呼叫 `advanceRadar`；停下時 `snapRadar`。停在「現在」按播放時先跳到最舊一格。
-- 失敗的格子不重畫（§5.4），播放經過時停在前一格的畫面。
+- 播放用 `requestAnimationFrame` 呼叫 `advanceRadar`；停下時 `snapRadar`。停在「現在」按播放時先跳到 `radarStart(n)`。滑桿位置用 `trackPos`。
+- 失敗的格子改畫之前最接近的已載入格（§5.4）。
 - 下方 `Legend scale="radar"`。
 
 **圖例**：`colorScale.ts` 的 `ScaleId` 加 `'radar'`，`stops` 由 `RADAR_COLORS` 產生（每個 dBZ 一個 stop，0–65），單位 `dBZ`。
@@ -243,8 +246,8 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 |---|---|
 | metadata 抓取失敗或回傳空清單 | `ensureFresh`：保留 SQLite 舊清單、標 `stale`、失敗後退避 60 秒 |
 | SQLite 無清單且抓取失敗 | `/api/radar` 回 503，徽章顯示「暫時無法取得資料」 |
-| 單格 400／404／502／500 | 見 §4.5；前端該格刻度標為失敗，播放經過時停在前一格畫面（app 設定 `retry: 2`，之後每 60 秒重抓一次，見 §5.1） |
-| 最新一格失敗 | 徽章顯示「暫時無法取得資料」，地圖保留上一張 |
+| 單格 400／404／502／500 | 見 §4.5；前端該格刻度標為失敗，地圖改畫之前最接近的已載入格（app 設定 `retry: 2`，之後每 60 秒重抓一次，見 §5.1） |
+| 最新一格失敗 | 徽章顯示「暫時無法取得資料」，地圖改畫之前最接近的已載入格 |
 | 授權碼 | 錯誤訊息與 log 一律遮蔽；fixture 提交前移除 |
 
 ## 7. 測試
@@ -257,7 +260,8 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 - `server/png.test.ts`：PNG 簽章、IHDR 寬高與色彩型態、IDAT 以 `unzlibSync` 解壓後等於各列加 filter byte 0 的原始 RGBA、CRC 正確。
 - `server/sync.test.ts`：`syncRadar` 以 fake Fetcher 寫入 19 格與 `fetch_log`；空清單拋錯且保留舊資料。
 - `server/repo.test.ts`：`replaceRadarFrames` 整批替換、`listRadarFrames` 排序。
-- `frontend/src/lib/radar.test.ts`：`agoLabel`、`hourTicks`、`advanceRadar`（含停留與回到開頭）、`radarIndex`、`snapRadar`、`canToggleRadar`、`SCALES.radar`。
+- `frontend/src/lib/radar.test.ts`：`agoLabel`、`hourTicks`、`advanceRadar`（以 60 fps 模擬兩輪，每格 500 ms、「現在」2 秒）、`radarStart`、`radarIndex`、`snapRadar`、`trackPos`、`nearestLoaded`、`canToggleRadar`、`SCALES.radar`。
+- `server/coldStart.test.ts`：`api/radar-frame.ts` 在 better-sqlite3 無法載入時仍能載入（種子 DB 路徑在 `server/seed.ts`，`http.ts` 不再經由 `db.ts` 載入 native 模組，減少單格端點的冷啟動成本）。
 - `frontend/src/store.test.ts`：`setLayer` 從雷達切到預報圖層時停止播放，預報圖層之間繼續播放。
 - `frontend/src/api.test.ts`：`radarFrameQuery` 以真的 `QueryObserver` 驗證失敗的格子 60 秒後重抓、成功的格子不再重抓。
 - `server/radarFrame.test.ts`：§4.5 的各種回應。

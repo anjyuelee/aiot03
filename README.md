@@ -184,6 +184,7 @@ aiot03/
 │   ├── radarFrame.ts     # 單格雷達 PNG 回應
 │   ├── png.ts            # PNG 編碼
 │   ├── db.ts             # SQLite schema、種子 DB 複製到 /tmp
+│   ├── seed.ts           # 種子 DB 路徑（不依賴 better-sqlite3）
 │   ├── freshness.ts      # TTL、併發去重、失敗退避
 │   ├── sync.ts           # 各資料集抓取與寫入
 │   ├── repo.ts           # SQL 查詢
