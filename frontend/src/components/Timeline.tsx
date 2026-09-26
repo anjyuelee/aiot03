@@ -7,6 +7,7 @@ import { advancePos } from '../lib/playback'
 import Legend from './Legend'
 import CloudModeToggle from './CloudModeToggle'
 import TimeTrack, { measureHeight } from './TimeTrack'
+import RadarTimeline from './RadarTimeline'
 
 // 播放時每 3 小時一格走 0.8 秒
 const STEP_MS = 800
@@ -46,8 +47,9 @@ export default function Timeline() {
     if (times.length > 0 && t > max) setT(0)
   }, [t, max, times.length, setT])
 
-  // 雷達、颱風、行政區沒有時間可播放，不顯示時間軸；衛星只留雲圖樣式切換
+  // 雷達播放過去 3 小時；颱風、行政區等沒有時間可播放，不顯示時間軸；衛星只留雲圖樣式切換
   if (!def.future) {
+    if (layer === 'radar') return <RadarTimeline />
     return layer === 'satellite' ? <div className="timeline glass compact" ref={measure}><CloudModeToggle /></div> : null
   }
 

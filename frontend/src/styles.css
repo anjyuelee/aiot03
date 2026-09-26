@@ -78,6 +78,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 .ruler { position: relative; height: 20px; margin: 8px 8px 0; }
 .tick { position: absolute; top: 0; width: 1px; height: 4px; background: rgba(255, 255, 255, 0.25); transform: translateX(-50%); }
 .tick.day { height: 18px; background: rgba(255, 255, 255, 0.45); }
+.tick.pending { opacity: 0.3; }
+.tick.failed { background: #ff6b6b; }
 .day-label { position: absolute; top: 6px; padding-left: 5px; font-size: 11px; line-height: 1; color: var(--muted); white-space: nowrap; }
 .day-label.on { color: var(--text); font-weight: 600; }
 .timeline.compact { width: min(520px, calc(100% - 2 * var(--gap))); }
