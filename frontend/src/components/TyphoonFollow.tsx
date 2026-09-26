@@ -16,10 +16,10 @@ const role = (r: string): FilterSpecification => ['==', ['get', 'role'], r]
 export default function TyphoonFollow({ map, list, times, pos }: { map: MlMap; list: Typhoon[]; times: string[]; pos: number }) {
   const ink = useStore(s => inkOf(s.basemap))
   const dark = useStore(s => BASEMAPS[s.basemap].dark)
-  const now = useMemo(() => followGeoJSON(list, times, pos), [list, times, pos])
-  // 重建圖層時帶入目前位置，不必讓時間軸的每一步都重建
-  const latest = useRef(now)
-  latest.current = now
+  // 時間軸位置上的中心與風圈；重建圖層時帶入目前位置，不必讓時間軸的每一步都重建
+  const atPos = useMemo(() => followGeoJSON(list, times, pos), [list, times, pos])
+  const latest = useRef(atPos)
+  latest.current = atPos
 
   useEffect(() => {
     const before = overlayBefore(map)
@@ -55,8 +55,8 @@ export default function TyphoonFollow({ map, list, times, pos }: { map: MlMap; l
   }, [map, list, ink, dark])
 
   useEffect(() => {
-    map.getSource<GeoJSONSource>(NOW)?.setData(now)
-  }, [map, now])
+    map.getSource<GeoJSONSource>(NOW)?.setData(atPos)
+  }, [map, atPos])
 
   return null
 }
