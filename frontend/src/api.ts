@@ -4,7 +4,7 @@ import { feature, mesh } from 'topojson-client'
 import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
 import type {
-  ApiResponse, Earthquake, ForecastGrid, Observation, RadarFrames, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+  ApiResponse, Bounds, Earthquake, ForecastGrid, Observation, RadarFrame, RadarFrames, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
 } from '../../shared/types'
 import { loadImage, satelliteOverlay } from './lib/overlays'
 import { reprojectImage } from './lib/reproject'
@@ -66,16 +66,21 @@ export const useRadar = (enabled: boolean) =>
 
 const oldestFirst = <T,>(results: T[]) => [...results].reverse()
 
+/** 單格雷達：載入 PNG 並重投影 */
+export const radarFrameQuery = (f: RadarFrame, bounds: Bounds) => ({
+  // 過去的格點不會再變，以時間為 key 快取；清單更新時只多載入新的一格
+  queryKey: ['radarFrame', f.time],
+  queryFn: async () => reprojectImage(await loadImage(f.url), bounds),
+  staleTime: Infinity,
+  gcTime: CANVAS_GC,
+  // 失敗的格子一分鐘後再試，不然停在雷達圖層時會一直卡住；成功的格子不再重抓
+  refetchInterval: (q: { state: { status: string } }) => (q.state.status === 'error' ? 60_000 : false),
+})
+
 /** 每格重投影後的 canvas，與 frames 同順序（由舊到新）；最新一格排最前面送出，先看到「現在」 */
 export const useRadarFrames = (radar: RadarFrames | null) =>
   useQueries({
-    queries: [...(radar?.frames ?? [])].reverse().map(f => ({
-      // 過去的格點不會再變，以時間為 key 快取；清單更新時只多載入新的一格
-      queryKey: ['radarFrame', f.time],
-      queryFn: async () => reprojectImage(await loadImage(f.url), radar!.bounds),
-      staleTime: Infinity,
-      gcTime: CANVAS_GC,
-    })),
+    queries: [...(radar?.frames ?? [])].reverse().map(f => radarFrameQuery(f, radar!.bounds)),
     combine: oldestFirst,
   })
 
