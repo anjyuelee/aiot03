@@ -30,7 +30,7 @@
   - 結果取 `max(start, 內插值)`：CWA 剛發布新觀測點時，`times[0]`（目前所在時段，可能比現在早最多 3 小時）可能早於 `start`（例如觀測點 20:00、時段 18:00），不夾住的話颱風會先往回走。
   - `times` 為空陣列時回傳 `start`。
 - `typhoonAt(t: Typhoon, time: number): { lon: number; lat: number; radius15ms: number | null } | null`
-  - 序列為「`past` 最後一點＋所有 `forecast`」，時刻以 `Date.parse(fix.time)` 比較。
+  - 序列為「`past` 最後一點＋晚於它的 `forecast`」，時刻以 `Date.parse(fix.time)` 比較。觀測點可能比預報新（例如颱風接近時觀測更新較密），不晚於最新觀測點的預測點已過時，留著會跳過觀測位置。
   - `past` 為空回傳 `null`。
   - `time` 不晚於序列第一點時回傳第一點；晚於最後一點時回傳 `null`；剛好落在某點時回傳該點。
   - 落在兩點之間：經緯度線性內插（相鄰點相距 6～24 小時、數百公里，直接內插經緯度的誤差看不出來）；七級風半徑兩端都有值時內插，只有一端有值時取該端（同 `lerpValues`），皆無則 `null`。
@@ -94,7 +94,7 @@ Props：`{ map, list, times, pos }`，`pos` 為 `DataLayers` 量化成 1/20 格�
 
 - `frontend/src/lib/typhoon.test.ts`：
   - `timeAtPos`：位置 0 回傳 `start`；位置 1 回傳 `times[0]`；位置 1.5 為 `times[0]` 與 `times[1]` 中點；負數與超過 `times.length` 時夾在兩端；`times[0]` 早於 `start` 時回傳 `start`；`times` 為空回傳 `start`
-  - `typhoonAt`：剛好落在觀測點、預測點；兩點之間經緯度與半徑為內插值；半徑只有一端有值時取該端；晚於最後一個預測點回傳 `null`；無預測點時只有 `start` 有值；`past` 為空回傳 `null`
+  - `typhoonAt`：剛好落在觀測點、預測點；不晚於最新觀測點的預測點被略過；兩點之間經緯度與半徑為內插值；半徑只有一端有值時取該端；晚於最後一個預測點回傳 `null`；無預測點時只有 `start` 有值；`past` 為空回傳 `null`
   - `followGeoJSON`：每個颱風一個中心點（帶名稱）與一個風圈；無半徑時不產生風圈；`typhoonAt` 為 `null` 的颱風整個略過
 - `frontend/src/map/helpers.test.ts`（新檔，以假 map 物件）：颱風群組存在時 `dataLayerBefore` 回傳 `TYPHOON_FOLLOW_BOTTOM`；不存在時回傳 `town-hit`，再不存在時回傳第一個 symbol 圖層；`overlayBefore` 不理會颱風群組
 - `npm test`、`npm run typecheck` 全過
