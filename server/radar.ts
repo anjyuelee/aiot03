@@ -3,9 +3,9 @@ import { RADAR_GRID, radarColor } from '../shared/radar.js'
 /** +08:00 ISO → /api/radar-frame 的 t（YYYYMMDDHHmm，臺北時間） */
 export const frameKey = (time: string) => time.slice(0, 16).replace(/\D/g, '')
 
-/** t（YYYYMMDDHHmm，分鐘為 10 的倍數）→ historyapi getData 的路徑；格式不符回 null */
+/** t（YYYYMMDDHHmm，分鐘為 10 的倍數）→ historyapi getData 的路徑；格式或月日時分範圍不符回 null，不拿去打 CWA */
 export function framePath(t: string): string | null {
-  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d0)$/.exec(t)
+  const m = /^(\d{4})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])([01]\d|2[0-3])([0-5]0)$/.exec(t)
   return m ? `${m[1]}/${m[2]}/${m[3]}/${m[4]}/${m[5]}/00` : null
 }
 

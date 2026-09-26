@@ -66,4 +66,10 @@ describe('frameKey / framePath', () => {
   it('rejects keys that are not on the 10-minute grid', () => {
     for (const t of ['202609261135', '2026092611', '20260926113000', 'abcdefghijkl']) expect(framePath(t)).toBeNull()
   })
+  it('rejects keys outside real month, day, hour and minute ranges', () => {
+    for (const t of ['202609261160', '202609261190', '202613261100', '202600261100', '202609321100', '202609001100', '202609262400']) {
+      expect(framePath(t)).toBeNull()
+    }
+    expect(framePath('202612312350')).toBe('2026/12/31/23/50/00')
+  })
 })
