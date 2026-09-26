@@ -174,7 +174,7 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 
 清單為空時回 503。快取沿用 `json()`（`s-maxage=60, stale-while-revalidate=60`）。
 
-**`GET /api/radar-frame?t=YYYYMMDDHHmm`**（`api/radar-frame.ts`，新增）
+**`GET /api/radar-frame?t=YYYYMMDDHHmm`**（`api/radar-frame.ts`，新增；主體在 `server/radarFrame.ts` 的 `radarFrameResponse(t, f)`，方便以 fake Fetcher 測試）
 
 | 情況 | 回應 |
 |---|---|
@@ -202,6 +202,7 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 - `hourTicks(times): number[]`：分鐘為 00 的格子 index。
 - `advanceRadar(pos, dt, n)`：位置以「距離現在的格數」表示（0 = 現在，−(n−1) = 最舊）。每格 500 ms；超過 0 之後再停 1.5 秒（即允許到 +3 格的虛擬位置），之後回到 −(n−1)。
 - `radarIndex(pos, n)`：`clamp(n − 1 + Math.round(pos), 0, n − 1)`，把位置轉成 frames 的 index（虛擬停留區間對應最後一格）。
+- `snapRadar(pos)`：`Math.min(0, Math.round(pos))`，停下或放開時對齊整格，停留區間算「現在」。
 
 ### 5.3 狀態（`frontend/src/store.ts`）
 
@@ -222,11 +223,12 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 
 **`RadarTimeline`（`frontend/src/components/RadarTimeline.tsx`）**：雷達圖層時取代原本回傳 `null` 的分支。
 
-- 19 格刻度，左為最舊、右為「現在」；`hourTicks` 的格子畫長刻度並標 `HH:00`（沿用 `tick day` 與 `day-label` 樣式）。
+- 19 格刻度，左為最舊、右為「現在」；`hourTicks` 的格子畫長刻度並標 `HH:00`（沿用 `tick day` 與 `day-label` 樣式）；最後兩格放不下文字，不標。
 - 標籤：最後一格主字「現在」、副字「HH:mm 觀測」；其他格主字 `HH:mm`、副字 `agoLabel`。
 - 拖曳、方向鍵、Home／End 同預報時間軸；放開時對齊最近一格。
 - 尚未載入的格子刻度變淡，失敗的格子刻度標為失敗色；19 格全部載入（失敗者除外）前播放鈕停用。
-- 播放用 `requestAnimationFrame` 呼叫 `advanceRadar`；播放時跳過失敗的格子。
+- 播放用 `requestAnimationFrame` 呼叫 `advanceRadar`；停下時 `snapRadar`。停在「現在」按播放時先跳到最舊一格。
+- 失敗的格子不重畫（§5.4），播放經過時停在前一格的畫面。
 - 下方 `Legend scale="radar"`。
 
 **圖例**：`colorScale.ts` 的 `ScaleId` 加 `'radar'`，`stops` 由 `RADAR_COLORS` 產生（每個 dBZ 一個 stop，0–65），單位 `dBZ`。
@@ -241,7 +243,7 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 |---|---|
 | metadata 抓取失敗或回傳空清單 | `ensureFresh`：保留 SQLite 舊清單、標 `stale`、失敗後退避 60 秒 |
 | SQLite 無清單且抓取失敗 | `/api/radar` 回 503，徽章顯示「暫時無法取得資料」 |
-| 單格 400／404／502／500 | 見 §4.5；前端該格刻度標為失敗，播放跳過 |
+| 單格 400／404／502／500 | 見 §4.5；前端該格刻度標為失敗，播放經過時停在前一格畫面（TanStack Query 預設先重試 3 次） |
 | 最新一格失敗 | 徽章顯示「暫時無法取得資料」，地圖保留上一張 |
 | 授權碼 | 錯誤訊息與 log 一律遮蔽；fixture 提交前移除 |
 
@@ -255,8 +257,8 @@ service.getRadar(): ensureFresh(db, 'radar', syncRadar) → listRadarFrames
 - `server/png.test.ts`：PNG 簽章、IHDR 寬高與色彩型態、IDAT 以 `unzlibSync` 解壓後等於各列加 filter byte 0 的原始 RGBA、CRC 正確。
 - `server/sync.test.ts`：`syncRadar` 以 fake Fetcher 寫入 19 格與 `fetch_log`；空清單拋錯且保留舊資料。
 - `server/repo.test.ts`：`replaceRadarFrames` 整批替換、`listRadarFrames` 排序。
-- 單格 API：`t` 格式驗證（400）、`NotFoundError` → 404 與快取標頭、其他錯誤 → 502。
-- `frontend/src/lib/lib.test.ts`（或 `radar.test.ts`）：`agoLabel`、`hourTicks`、`advanceRadar`（含停留與回到開頭）、`radarIndex`。
+- `frontend/src/lib/radar.test.ts`：`agoLabel`、`hourTicks`、`advanceRadar`（含停留與回到開頭）、`radarIndex`、`snapRadar`、`SCALES.radar`。
+- `server/radarFrame.test.ts`：§4.5 的各種回應。
 - 手動：`npm run dev`，實測播放、拖曳、鍵盤、載入中與失敗狀態、手機寬度；`npm test && npm run typecheck && npm run build`。
 - README：功能說明（雷達 3 小時回放）、架構圖（`O-A0058-005` 改為 historyapi `O-A0059-001`）、API 表加 `/api/radar-frame`、TTL 表；重截 `docs/screenshots/radar.png`（含時間軸）。
 
