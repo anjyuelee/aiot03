@@ -32,7 +32,7 @@ export function typhoonBounds(list: Typhoon[]): Bounds {
   return [w, s, e, n]
 }
 
-type Role = 'track-past' | 'track-forecast' | 'point' | 'wind' | 'cone'
+type Role = 'track-past' | 'track-forecast' | 'point' | 'wind' | 'cone' | 'center'
 const feature = (role: Role, geometry: Feature['geometry'], props: Record<string, unknown> = {}): Feature =>
   ({ type: 'Feature', geometry, properties: { role, ...props } })
 
@@ -54,6 +54,58 @@ export function toGeoJSON(list: Typhoon[]): FeatureCollection {
     t.forecast.forEach((f, i) => features.push(feature('point', { type: 'Point', coordinates: pos(f) },
       { ti, kind: 'forecast', i, current: false })))
   })
+  return { type: 'FeatureCollection', features }
+}
+
+/** 時間軸位置換成時刻（epoch ms）：0 為最新觀測點 start，第 k 格為 times[k - 1]，格與格之間線性內插 */
+export function timeAtPos(pos: number, times: string[], start: number): number {
+  const p = Math.min(Math.max(pos, 0), times.length)
+  const at = (k: number) => (k === 0 ? start : Date.parse(times[k - 1]))
+  const i = Math.floor(p)
+  const f = p - i
+  const t = f > 0 ? at(i) + (at(i + 1) - at(i)) * f : at(i)
+  // 剛發布新觀測點時，目前所在的時段可能比觀測點早，不讓颱風往回走
+  return Math.max(start, t)
+}
+
+export interface TyphoonState { lon: number; lat: number; radius15ms: number | null }
+
+const stateOf = ({ lon, lat, radius15ms }: TyphoonFix): TyphoonState => ({ lon, lat, radius15ms })
+
+/** 颱風在某時刻的位置與七級風半徑：在最新觀測點與預測點之間線性內插；晚於最後一個預測點時為 null，不外推 */
+export function typhoonAt(t: Typhoon, time: number): TyphoonState | null {
+  const now = t.past.at(-1)
+  if (!now) return null
+  if (time <= Date.parse(now.time)) return stateOf(now)
+  const seq = [now, ...t.forecast]
+  for (let k = 1; k < seq.length; k++) {
+    const a = seq[k - 1]
+    const b = seq[k]
+    const tb = Date.parse(b.time)
+    if (time === tb) return stateOf(b)
+    if (time > tb) continue
+    const ta = Date.parse(a.time)
+    const f = (time - ta) / (tb - ta)
+    // 半徑只有一端有值時取有值的那端，同 lerpValues
+    const r = a.radius15ms == null ? b.radius15ms
+      : b.radius15ms == null ? a.radius15ms
+      : a.radius15ms + (b.radius15ms - a.radius15ms) * f
+    return { lon: a.lon + (b.lon - a.lon) * f, lat: a.lat + (b.lat - a.lat) * f, radius15ms: r }
+  }
+  return null
+}
+
+/** 天氣圖層上跟著時間軸移動的颱風中心（帶名稱）與七級風圈 */
+export function followGeoJSON(list: Typhoon[], times: string[], pos: number): FeatureCollection {
+  const features: Feature[] = []
+  for (const t of list) {
+    const now = t.past.at(-1)
+    if (!now) continue
+    const s = typhoonAt(t, timeAtPos(pos, times, Date.parse(now.time)))
+    if (!s) continue
+    features.push(feature('center', { type: 'Point', coordinates: [s.lon, s.lat] }, { name: t.name }))
+    if (s.radius15ms) features.push(feature('wind', { type: 'Polygon', coordinates: [circlePolygon(s.lon, s.lat, s.radius15ms)] }))
+  }
   return { type: 'FeatureCollection', features }
 }
 
