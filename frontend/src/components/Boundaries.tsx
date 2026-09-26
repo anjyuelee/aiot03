@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
-import type { FilterSpecification, Map as MlMap } from 'maplibre-gl'
+import type { ExpressionSpecification, FilterSpecification, Map as MlMap } from 'maplibre-gl'
 import { useBoundaries, useTownShapes, useWarnings } from '../api'
 import { useStore } from '../store'
 import { inkOf } from '../lib/basemaps'
-import { countyColor, countyFilter, countyRank, outlineOpacity } from '../lib/warnings'
+import {
+  COUNTY_SELECTED_WIDTH, WARNING_CASING_WIDTH, WARNING_LINE_WIDTH, countyColor, countyFilter, countyRank, outlineOpacity, type WidthStops,
+} from '../lib/warnings'
 import { TOWN_HIT, firstSymbolLayer, removeLayerAndSource } from '../map/helpers'
 
 const TOWN_LINE = 'town-line'
@@ -15,6 +17,7 @@ const WARNING_CASING = 'warning-casing'
 const WARNING_LINE = 'warning-line'
 const selected = (town: string | null): FilterSpecification => ['==', ['get', 'TOWNCODE'], town ?? '']
 const selectedCounty = (county: string | null): FilterSpecification => ['==', ['get', 'COUNTYCODE'], county ?? '']
+const byZoom = ([z7, z11]: WidthStops): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], 7, z7, 11, z11]
 
 /** 縣市／鄉鎮界線、特報縣市描邊，以及鄉鎮點擊判定用的透明多邊形與縣市／鄉鎮選取外框 */
 export default function Boundaries({ map }: { map: MlMap }) {
@@ -44,12 +47,12 @@ export default function Boundaries({ map }: { map: MlMap }) {
     // 特報描邊疊在縣市界之上、選取外框之下；以目前的值建立，之後由下方 effect 更新
     const list = warnings ?? []
     map.addLayer({ id: WARNING_CASING, type: 'line', source: COUNTY, filter: countyFilter(list), layout: { 'line-join': 'round' },
-      paint: { 'line-color': 'rgba(0,0,0,0.55)', 'line-opacity': outline, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 5, 11, 6.5] } }, before)
+      paint: { 'line-color': 'rgba(0,0,0,0.55)', 'line-opacity': outline, 'line-width': byZoom(WARNING_CASING_WIDTH) } }, before)
     map.addLayer({ id: WARNING_LINE, type: 'line', source: COUNTY, filter: countyFilter(list),
       layout: { 'line-join': 'round', 'line-sort-key': countyRank(list) },
-      paint: { 'line-color': countyColor(list), 'line-opacity': outline, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 2, 11, 3.5] } }, before)
+      paint: { 'line-color': countyColor(list), 'line-opacity': outline, 'line-width': byZoom(WARNING_LINE_WIDTH) } }, before)
     map.addLayer({ id: COUNTY_SELECTED, type: 'line', source: COUNTY, filter: selectedCounty(useStore.getState().county),
-      paint: { 'line-color': ink, 'line-width': 2 } }, before)
+      paint: { 'line-color': ink, 'line-width': byZoom(COUNTY_SELECTED_WIDTH) } }, before)
     map.addLayer({ id: SELECTED, type: 'line', source: TOWN_HIT, filter: selected(useStore.getState().town),
       paint: { 'line-color': '#3b82f6', 'line-width': 2.5 } }, before)
     return () => {

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { badgeText, countyColor, countyFilter, countyRank, fmtValid, groupByKind, outlineOpacity, severityOf, worstByCounty } from './warnings'
+import {
+  COUNTY_SELECTED_WIDTH, WARNING_LINE_WIDTH, badgeText, countyColor, countyFilter, countyRank, fmtValid, groupByKind, outlineOpacity, severityOf, worstByCounty,
+} from './warnings'
 import type { Warning } from '../../../shared/types'
 
 const w = (countyCode: string, county: string, phenomena: string, extra: Partial<Warning> = {}): Warning => ({
@@ -65,6 +67,13 @@ describe('outlineOpacity', () => {
     expect([0, 0.5, 1, 3].map(p => outlineOpacity('temp', p))).toEqual([1, 0.5, 0, 0])
     expect(outlineOpacity('temp', 0.52)).toBe(0.5)
     expect(outlineOpacity('radar', 0)).toBe(1)
+  })
+})
+
+describe('outline widths', () => {
+  it('leaves at least 1px of warning colour on each side of the county selection line', () => {
+    const rims = WARNING_LINE_WIDTH.map((w, i) => (w - COUNTY_SELECTED_WIDTH[i]) / 2)
+    expect(Math.min(...rims)).toBeGreaterThanOrEqual(1)
   })
 })
 

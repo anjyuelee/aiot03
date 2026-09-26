@@ -60,6 +60,14 @@ export function outlineOpacity(layer: LayerId, pos: number): number {
   return Math.max(0, 1 - Math.round(pos * 20) / 20)
 }
 
+/** 線寬 [zoom 7, zoom 11]，之間線性內插、之外取端點值 */
+export type WidthStops = readonly [number, number]
+
+// 縣市選取外框疊在描邊中央，兩側各要留至少 1px 特報色；線寬都是線性內插，兩個端點成立中間就成立
+export const WARNING_LINE_WIDTH: WidthStops = [3, 4.5]
+export const WARNING_CASING_WIDTH: WidthStops = [6, 7.5]
+export const COUNTY_SELECTED_WIDTH: WidthStops = [1, 2]
+
 export interface WarningGroup { title: string; color: string; rank: number; items: Warning[] }
 
 /** 依種類分組（種類＋等級，例：大雨特報），嚴重者在前；組內依縣市代碼排序 */
