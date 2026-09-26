@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { badgeText, countyColor, fmtValid, groupByKind, severityOf, worstByCounty } from './warnings'
+import { badgeText, countyColor, countyFilter, countyRank, fmtValid, groupByKind, outlineOpacity, severityOf, worstByCounty } from './warnings'
 import type { Warning } from '../../../shared/types'
 
 const w = (countyCode: string, county: string, phenomena: string, extra: Partial<Warning> = {}): Warning => ({
@@ -34,6 +34,37 @@ describe('countyColor', () => {
   it('matches each county to its most severe colour', () => {
     expect(countyColor([w('10002', '宜蘭縣', '大雨'), w('10002', '宜蘭縣', '豪雨'), w('10015', '花蓮縣', '濃霧')])).toEqual(
       ['match', ['get', 'COUNTYCODE'], '10002', severityOf('豪雨').color, '10015', severityOf('濃霧').color, 'rgba(0,0,0,0)'])
+  })
+})
+
+describe('countyFilter', () => {
+  it('selects no county without warnings', () => {
+    expect(countyFilter([])).toEqual(['in', ['get', 'COUNTYCODE'], ['literal', []]])
+  })
+  it('lists each warned county once, unknown kinds included', () => {
+    expect(countyFilter([w('10002', '宜蘭縣', '大雨'), w('10002', '宜蘭縣', '陸上強風'), w('10015', '花蓮縣', '高溫')])).toEqual(
+      ['in', ['get', 'COUNTYCODE'], ['literal', ['10002', '10015']]])
+  })
+})
+
+describe('countyRank', () => {
+  it('is 0 without warnings', () => {
+    expect(countyRank([])).toBe(0)
+  })
+  it('matches each county to its highest rank', () => {
+    expect(countyRank([w('10002', '宜蘭縣', '陸上強風'), w('10002', '宜蘭縣', '大雨'), w('10015', '花蓮縣', '豪雨')])).toEqual(
+      ['match', ['get', 'COUNTYCODE'], '10002', 4, '10015', 5, 0])
+  })
+})
+
+describe('outlineOpacity', () => {
+  it('hides the outline on the warning, quake and admin layers', () => {
+    expect((['warning', 'quake', 'admin'] as const).map(l => outlineOpacity(l, 0))).toEqual([0, 0, 0])
+  })
+  it('fades out between now and the first forecast slot', () => {
+    expect([0, 0.5, 1, 3].map(p => outlineOpacity('temp', p))).toEqual([1, 0.5, 0, 0])
+    expect(outlineOpacity('temp', 0.52)).toBe(0.5)
+    expect(outlineOpacity('radar', 0)).toBe(1)
   })
 })
 

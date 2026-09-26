@@ -1,6 +1,7 @@
-import type { ExpressionSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 import type { Warning } from '../../../shared/types'
 import { fmtMD } from './format'
+import type { LayerId } from './layers'
 
 export interface Severity { rank: number; color: string }
 
@@ -42,6 +43,22 @@ function byCounty<T extends string | number>(list: Warning[], pick: (s: Severity
 
 /** 有特報的縣市給最嚴重種類的顏色，其餘透明；特報填色與描邊共用 */
 export const countyColor = (list: Warning[]) => byCounty(list, s => s.color, NONE)
+
+/** 描邊的 line-sort-key：較嚴重者畫在上面，相鄰縣市共用邊界顯示較嚴重的顏色 */
+export const countyRank = (list: Warning[]) => byCounty(list, s => s.rank, 0)
+
+/** 只留有特報的縣市；沒有特報時一個都不選 */
+export const countyFilter = (list: Warning[]): FilterSpecification =>
+  ['in', ['get', 'COUNTYCODE'], ['literal', [...worstByCounty(list).keys()]]]
+
+// 特報圖層已整塊填色；地震、行政區與天氣特報無關
+const NO_OUTLINE: LayerId[] = ['warning', 'quake', 'admin']
+
+/** 描邊只代表「現在」：由現在到第一個預報時段隨觀測熱圖淡出；量化成 1/20 格，播放時不必每幀重設 */
+export function outlineOpacity(layer: LayerId, pos: number): number {
+  if (NO_OUTLINE.includes(layer)) return 0
+  return Math.max(0, 1 - Math.round(pos * 20) / 20)
+}
 
 export interface WarningGroup { title: string; color: string; rank: number; items: Warning[] }
 
