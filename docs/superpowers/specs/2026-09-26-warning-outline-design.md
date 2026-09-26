@@ -27,6 +27,7 @@
 - `countyFilter(list): FilterSpecification`：`['in', ['get', 'COUNTYCODE'], ['literal', codes]]`，只留有特報的縣市；沒有特報時 `codes` 為空陣列，不選到任何縣市。
 - `countyRank(list): number | ExpressionSpecification`：`match` 對 `COUNTYCODE` 給最嚴重特報的 rank，其餘 0；沒有特報時回傳 `0`。作為 `line-sort-key`。
 - `outlineOpacity(layer, pos): number`：`warning`、`quake`、`admin` 回傳 0；其他圖層回傳 `max(0, 1 − pos)`，`pos` 先比照 `DataLayers` 量化成 1/20 格，播放時不必每一幀重設 paint。
+- 線寬常數 `WARNING_LINE_WIDTH`、`WARNING_CASING_WIDTH`、`COUNTY_SELECTED_WIDTH`（型別 `WidthStops`：zoom 7 與 11 的值，之間線性內插）。縣市選取外框疊在描邊中央，兩側各要留至少 1px 特報色，也就是每個端點 `(色線 − 選取外框) / 2 ≥ 1`；兩端點成立，中間的內插值也成立。
 
 ### 2.2 `frontend/src/components/Boundaries.tsx`
 
@@ -34,10 +35,11 @@
 
 | 圖層 | paint／layout |
 |---|---|
-| `warning-casing` | `line-color: rgba(0,0,0,0.55)`，`line-width` 依 zoom 7 → 11 由 5 到 6.5，`line-join: round` |
-| `warning-line` | `line-color: countyColor(list)`，`line-width` 依 zoom 7 → 11 由 2 到 3.5，`line-join: round`，`line-sort-key: countyRank(list)` |
+| `warning-casing` | `line-color: rgba(0,0,0,0.55)`，`line-width` 依 zoom 7 → 11 由 6 到 7.5，`line-join: round` |
+| `warning-line` | `line-color: countyColor(list)`，`line-width` 依 zoom 7 → 11 由 3 到 4.5，`line-join: round`，`line-sort-key: countyRank(list)` |
+| `county-selected`（既有） | `line-width` 由固定 2px 改為依 zoom 7 → 11 由 1 到 2，選到有特報的縣市時兩側仍看得到特報色 |
 
-  兩層的 `line-opacity` 皆為 `outlineOpacity` 的值。線寬已在深色、淺色底圖與溫度熱圖、雷達上實測可辨識。cleanup 先移除這兩層，再移除 `county-shape` source（source 仍被圖層使用時無法移除）。
+  兩層的 `line-opacity` 皆為 `outlineOpacity` 的值。線寬已在深色、淺色、衛星底圖與溫度熱圖、雷達上實測可辨識；全台視野下選取有特報的縣市，選取外框與特報色都看得到。zoom 7 以下線寬維持 zoom 7 的值，颱風圖層縮小到 zoom 5 左右時，臺北市這類小縣市幾乎被描邊填滿，但仍看得出是有特報的區塊。cleanup 先移除這兩層，再移除 `county-shape` source（source 仍被圖層使用時無法移除）。
 - 新增兩個 effect，都在 `ready` 後才動作：
   - 特報清單（`useWarnings().data?.data ?? []`）變動時：兩層 `setFilter(countyFilter)`，`warning-line` 設 `line-color` 與 `line-sort-key`。
   - `useStore(s => outlineOpacity(s.layer, s.pos))` 變動時：兩層設 `line-opacity`。selector 回傳量化後的數字，數值不變就不重新渲染。
@@ -63,12 +65,13 @@
   - `countyFilter`：無特報時 `codes` 為空；有特報時列出各縣市代碼且不重複
   - `countyRank`：無特報回傳 0；同縣市多則時取最高 rank
   - `outlineOpacity`：`warning`／`quake`／`admin` 為 0；`pos` 0、0.5、1、3 分別為 1、0.5、0、0；0.52 量化為 0.5
+  - 線寬：兩個端點上，色線與選取外框的差距兩側各至少 1px
 - `npm test`、`npm run typecheck` 全過
 - 手動：線上目前無特報，本機暫時讓 `/api/warnings` 回傳 `server/__fixtures__/W-C0033-001.json` 的解析結果（不提交），確認
   - 七個天氣圖層都看得到描邊，宜蘭（大雨＋強風 → 大雨色）與花蓮（豪雨）共用邊界顯示豪雨色
   - 溫度圖層拖離「現在」時描邊淡出，拖回時出現；切到特報、地震、行政區時消失
   - 深色、淺色、衛星底圖上都看得清楚；換底圖後描邊仍在
-  - 點縣市照常逐層選取，選取外框在描邊之上
+  - 點縣市照常逐層選取，選取外框在描邊之上；全台視野（zoom 約 7）下選取的有特報縣市，兩側仍看得到特報色
 
 ## 5. 不做
 
