@@ -13,6 +13,7 @@ import { useImageOverlay } from '../map/useImageOverlay'
 import { useChoropleth } from '../map/useChoropleth'
 import WindParticles from './WindParticles'
 import TyphoonLayer from './TyphoonLayer'
+import TyphoonFollow from './TyphoonFollow'
 import AdminLayer from './AdminLayer'
 import WarningLayer from './WarningLayer'
 import QuakeLayer from './QuakeLayer'
@@ -37,7 +38,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
   const gridB = useForecastGrid(f > 0 ? times[i] ?? null : null)
   const satellite = useSatellite(layer === 'satellite')
   const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null, cloudMode)
-  const typhoon = useTyphoons(layer === 'typhoon')
+  const typhoon = useTyphoons(layer === 'typhoon' || !!def.future)
   const warnings = useWarnings()
   const quakes = useEarthquakes()
 
@@ -69,6 +70,7 @@ export default function DataLayers({ map }: { map: MlMap }) {
       {layer === 'radar' && <RadarLayer map={map} />}
       {layer === 'wind' && !future && obs.data && <WindParticles map={map} obs={obs.data.data} />}
       {layer === 'typhoon' && typhoon.data && <TyphoonLayer map={map} list={typhoon.data.data} />}
+      {def.future && typhoon.data && typhoon.data.data.length > 0 && <TyphoonFollow map={map} list={typhoon.data.data} times={times} pos={q} />}
       {layer === 'admin' && <AdminLayer map={map} />}
       {layer === 'warning' && warnings.data && <WarningLayer map={map} list={warnings.data.data} />}
       {layer === 'quake' && quakes.data && <QuakeLayer map={map} list={quakes.data.data} />}
