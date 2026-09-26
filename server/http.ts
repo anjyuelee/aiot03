@@ -1,4 +1,4 @@
-import { seedExists } from './db.js'
+import { seedExists } from './seed.js'
 
 function cacheControl(body: unknown, status: number): string {
   if (status !== 200) return 'no-store'

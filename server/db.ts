@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { SEED, seedExists } from './seed.js'
 
 export type DB = Database.Database
 
@@ -33,10 +34,6 @@ export function openDb(file: string): DB {
   db.exec(SCHEMA)
   return db
 }
-
-const SEED = path.join(process.cwd(), 'data', 'weather.db')
-
-export const seedExists = () => fs.existsSync(SEED)
 
 let shared: DB | null = null
 
