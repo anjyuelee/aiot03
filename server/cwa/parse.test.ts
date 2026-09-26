@@ -86,6 +86,13 @@ describe('parseRadarTimes', () => {
     const shuffled = { dataset: { resources: { resource: { data: { time: [...list].reverse() } } } } }
     expect(parseRadarTimes(shuffled)).toEqual(parseRadarTimes(json))
   })
+  it('drops a repeated frame instead of storing it twice', () => {
+    const list = json.dataset.resources.resource.data.time
+    const repeated = { dataset: { resources: { resource: { data: { time: [...list, list[list.length - 1]] } } } } }
+    const times = parseRadarTimes(repeated)
+    expect(new Set(times).size).toBe(times.length)
+    expect(times).toEqual(parseRadarTimes(json))
+  })
   it('returns nothing for a response without frames', () => {
     expect(parseRadarTimes({ dataset: { resources: { resource: { data: {} } } } })).toEqual([])
     expect(parseRadarTimes({})).toEqual([])

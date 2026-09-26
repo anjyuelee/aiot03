@@ -144,10 +144,11 @@ export function parseImage(json: any, kind: ImageKind): ImageOverlay {
   return { kind, url: ds.Resource.ProductURL, obsTime: ds.ObsTime.Datetime, bounds }
 }
 
-/** historyapi metadata → 最近 count 格的 DateTime（+08:00 ISO），由舊到新 */
+/** historyapi metadata → 最近 count 格的 DateTime（+08:00 ISO），由舊到新；重複的時間只留一筆，寫入時才不會撞 primary key */
 export function parseRadarTimes(json: any, count = 19): string[] {
   const list: any[] = json.dataset?.resources?.resource?.data?.time ?? []
-  return list.map(t => t.DateTime).filter((t): t is string => typeof t === 'string').sort().slice(-count)
+  const times = new Set(list.map(t => t.DateTime).filter((t): t is string => typeof t === 'string'))
+  return [...times].sort().slice(-count)
 }
 
 const HOUR = 3600_000
