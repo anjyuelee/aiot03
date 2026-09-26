@@ -1,19 +1,13 @@
-import type { Bounds, ImageOverlay, SatelliteOverlay } from '../../../shared/types'
+import type { Bounds, SatelliteOverlay } from '../../../shared/types'
 import { reprojectImage, type CanvasOverlay } from './reproject'
 import { styleClouds, type CloudMode } from './clouds'
 
-async function loadImage(url: string): Promise<HTMLImageElement> {
+export async function loadImage(url: string): Promise<HTMLImageElement> {
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = url
   await img.decode()
   return img
-}
-
-export async function radarOverlay(o: ImageOverlay): Promise<CanvasOverlay> {
-  // 圖檔名固定，以觀測時間避開瀏覽器快取
-  const img = await loadImage(`${o.url}?t=${encodeURIComponent(o.obsTime)}`)
-  return reprojectImage(img, o.bounds)
 }
 
 /** 圖塊先拼成一張經緯度影像再整張重投影，各塊分開重投影會在接縫處錯位 */

@@ -2,8 +2,7 @@ import { useMemo } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { lerpValues } from '../lib/playback'
 import {
-  useEarthquakes, usePrefetchGrids, useForecastGrid, useFutureTimes, useObservations, useOverlay, useReprojected, useSatellite, useSatelliteClouds,
-  useTyphoons, useWarnings,
+  useEarthquakes, usePrefetchGrids, useForecastGrid, useFutureTimes, useObservations, useSatellite, useSatelliteClouds, useTyphoons, useWarnings,
 } from '../api'
 import { useStore } from '../store'
 import { LAYERS } from '../lib/layers'
@@ -17,6 +16,7 @@ import TyphoonLayer from './TyphoonLayer'
 import AdminLayer from './AdminLayer'
 import WarningLayer from './WarningLayer'
 import QuakeLayer from './QuakeLayer'
+import RadarLayer from './RadarLayer'
 
 export default function DataLayers({ map }: { map: MlMap }) {
   const layer = useStore(s => s.layer)
@@ -35,8 +35,6 @@ export default function DataLayers({ map }: { map: MlMap }) {
   // 位置落在第 i 格與第 i + 1 格之間；第 0 格是「現在」的觀測熱圖，不是預報
   const gridA = useForecastGrid(i >= 1 ? times[i - 1] ?? null : null)
   const gridB = useForecastGrid(f > 0 ? times[i] ?? null : null)
-  const radar = useOverlay(layer === 'radar' ? 'radar' : null)
-  const image = useReprojected(layer === 'radar' ? radar.data?.data ?? null : null)
   const satellite = useSatellite(layer === 'satellite')
   const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null, cloudMode)
   const typhoon = useTyphoons(layer === 'typhoon')
@@ -63,12 +61,12 @@ export default function DataLayers({ map }: { map: MlMap }) {
 
   // 「現在」到第一個預報時段之間，觀測熱圖淡出、鄉鎮預報淡入
   useImageOverlay(map, 'heat', heat, 0.7 * (i === 0 ? 1 - f : 0))
-  useImageOverlay(map, 'image', image.data ?? null, 0.9)
   // 雲的透明度已在像素裡，整體不透明度可以調高
   useImageOverlay(map, 'satellite', layer === 'satellite' ? clouds.data ?? null : null, 0.9)
   useChoropleth(map, choropleth, future && def.future ? SCALES[def.future.scale].stops : null, i === 0 ? f : 1)
   return (
     <>
+      {layer === 'radar' && <RadarLayer map={map} />}
       {layer === 'wind' && !future && obs.data && <WindParticles map={map} obs={obs.data.data} />}
       {layer === 'typhoon' && typhoon.data && <TyphoonLayer map={map} list={typhoon.data.data} />}
       {layer === 'admin' && <AdminLayer map={map} />}

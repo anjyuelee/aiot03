@@ -1,12 +1,13 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { feature, mesh } from 'topojson-client'
 import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
 import type {
-  ApiResponse, Earthquake, ForecastGrid, ImageOverlay, Observation, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+  ApiResponse, Earthquake, ForecastGrid, Observation, RadarFrames, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
 } from '../../shared/types'
-import { radarOverlay, satelliteOverlay } from './lib/overlays'
+import { loadImage, satelliteOverlay } from './lib/overlays'
+import { reprojectImage } from './lib/reproject'
 import type { CloudMode } from './lib/clouds'
 import type { CountyShapes } from './lib/geo'
 
@@ -60,16 +61,22 @@ export function useFutureTimes(): string[] {
   )
 }
 
-export const useOverlay = (kind: 'radar' | null) =>
-  useQuery({ queryKey: ['overlay', kind], queryFn: () => get<ImageOverlay>(`/api/${kind}`), enabled: !!kind, refetchInterval: TEN_MIN })
+export const useRadar = (enabled: boolean) =>
+  useQuery({ queryKey: ['radar'], queryFn: () => get<RadarFrames>('/api/radar'), enabled, refetchInterval: TEN_MIN })
 
-export const useReprojected = (o: ImageOverlay | null) =>
-  useQuery({
-    queryKey: ['reprojected', o?.url, o?.obsTime],
-    queryFn: () => radarOverlay(o!),
-    enabled: !!o,
-    staleTime: Infinity,
-    gcTime: CANVAS_GC,
+const oldestFirst = <T,>(results: T[]) => [...results].reverse()
+
+/** 每格重投影後的 canvas，與 frames 同順序（由舊到新）；最新一格排最前面送出，先看到「現在」 */
+export const useRadarFrames = (radar: RadarFrames | null) =>
+  useQueries({
+    queries: [...(radar?.frames ?? [])].reverse().map(f => ({
+      // 過去的格點不會再變，以時間為 key 快取；清單更新時只多載入新的一格
+      queryKey: ['radarFrame', f.time],
+      queryFn: async () => reprojectImage(await loadImage(f.url), radar!.bounds),
+      staleTime: Infinity,
+      gcTime: CANVAS_GC,
+    })),
+    combine: oldestFirst,
   })
 
 export const useSatellite = (enabled: boolean) =>
