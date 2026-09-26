@@ -43,8 +43,11 @@ export const useStore = create<State>(set => ({
   basemap: 'dark',
   quake: null,
   radarPos: 0,
-  // 雷達/衛星沒有未來時段，切換時回到「現在」；雷達時間軸每次切換都從「現在」開始
-  setLayer: layer => set(LAYERS[layer].future ? { layer, radarPos: 0 } : { layer, t: 0, pos: 0, playing: false, radarPos: 0 }),
+  // 雷達/衛星沒有未來時段，切換時回到「現在」；雷達時間軸每次切換都從「現在」開始。
+  // 預報圖層之間繼續播放，但雷達回放不能延續成預報播放
+  setLayer: layer => set(s => LAYERS[layer].future
+    ? { layer, radarPos: 0, playing: s.playing && !!LAYERS[s.layer].future }
+    : { layer, t: 0, pos: 0, playing: false, radarPos: 0 }),
   setT: t => set({ t, pos: t }),
   setPos: pos => set({ pos, t: Math.round(pos) }),
   selectTown: town => set(town ? { town, county: countyOf(town) } : { town }),
