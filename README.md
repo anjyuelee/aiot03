@@ -1,6 +1,6 @@
 # 台灣天氣地圖（CWA Open Data）
 
-類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波、衛星雲圖與颱風路徑。
+類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波（過去 3 小時回放）、衛星雲圖與颱風路徑。
 
 🌐 **線上網址：<https://aiot03.vercel.app>**
 
@@ -9,7 +9,7 @@
 | 溫度熱圖（即時測站 IDW 內插） | 風場粒子動畫 |
 |---|---|
 | ![溫度](docs/screenshots/temp.png) | ![風](docs/screenshots/wind.png) |
-| **雷達回波** | **衛星雲圖（色調強化）** |
+| **雷達回波（過去 3 小時回放）** | **衛星雲圖（色調強化）** |
 | ![雷達](docs/screenshots/radar.png) | ![衛星](docs/screenshots/satellite.png) |
 
 | 鄉鎮預報卡片（72 小時曲線＋一週預報） | 手機版 |
@@ -37,11 +37,12 @@
 - **十種圖層**：溫度、風、雨量、濕度、雷達、衛星、颱風、特報、地震、行政區
 - **即時熱圖**：全台自動站＋人工站觀測，以反距離權重（IDW）內插成連續色階，遠離測站處淡出
 - **風場粒子**：依測站風向風速內插的風場驅動粒子動畫
-- **時間軸**：拖曳或播放未來 72 小時（3 小時一格），切換為鄉鎮預報分區著色；播放時在時段間線性內插、顏色平滑漸變，「現在」與預報之間淡入淡出，停下時對齊整點時段；整條日期刻度可拖曳，跟隨標籤顯示日期與時間；雷達、颱風、行政區等無時間序列的圖層不顯示時間軸
+- **時間軸**：拖曳或播放未來 72 小時（3 小時一格），切換為鄉鎮預報分區著色；播放時在時段間線性內插、顏色平滑漸變，「現在」與預報之間淡入淡出，停下時對齊整點時段；整條日期刻度可拖曳，跟隨標籤顯示日期與時間；雷達另有過去 3 小時的回放時間軸，颱風、行政區等無時間序列的圖層不顯示時間軸
 - **縣市／鄉鎮界線**：所有圖層上疊加縣市界（含海岸線）與鄉鎮界，鄉鎮界放大後才漸漸浮現
 - **逐層選取**：在地圖上先點選縣市（框起並縮放過去），在該縣市內再點才選到鄉鎮；以鄉鎮多邊形判定點擊位置，搜尋框下方的麵包屑（`← 全台 › 縣市 › 鄉鎮`）可退回上一層
 - **行政區圖層**：只顯示縣市／鄉鎮界線與中文名稱，不疊天氣色階；點選的縣市或鄉鎮整塊填滿藍色，選到鄉鎮時同縣市其他鄉鎮淡淡上色
 - **鄉鎮查詢**：搜尋、定位或逐層點選鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報
+- **雷達回放**：過去 3 小時、每 10 分鐘一格的雷達回波格點（CWA 歷史 API `O-A0059-001`），server 依 CWA 官方色標畫成 PNG 並長期快取；可播放、拖曳與鍵盤切格，播到「現在」停 1.5 秒再重播，下方附 0–65 dBZ 圖例
 - **雷達／衛星**：經緯度等距影像逐列重投影為 Web Mercator 後疊圖；衛星紅外線雲圖可切換「色調強化」（依雲頂溫度由灰、藍、綠、黃到紅紫上色）或白色半透明雲層
 - **颱風**：活動中熱帶氣旋的過去／預測路徑、七級風暴風圈與 70% 潛勢圓，點路徑點看該時刻數值；切入時自動縮放到台灣與整條路徑
 - **特報**：發布中的縣市天氣特報依最嚴重種類為縣市著色（颱風警報、大豪雨、豪雨、大雨、低溫、強風、濃霧），資訊卡依種類列出縣市與有效時間；左上角徽章在任何圖層都提示目前特報，點了切到特報圖層
@@ -71,7 +72,7 @@ flowchart LR
     CDN["CDN 快取<br/>s-maxage=60, SWR=60"]
     subgraph Fn["Vercel Functions（api/*.ts）"]
       direction TB
-      API["路由<br/>observations · towns · forecast<br/>forecast-grid · radar · satellite · satellite-tile · typhoon · warnings · earthquakes"]
+      API["路由<br/>observations · towns · forecast<br/>forecast-grid · radar · radar-frame · satellite · satellite-tile<br/>typhoon · warnings · earthquakes"]
       Service["service.ts"]
       Fresh["freshness.ts<br/>TTL 檢查 · 併發去重 · 失敗退避"]
       Sync["sync.ts<br/>抓取 → parse → 寫入"]
@@ -89,8 +90,9 @@ flowchart LR
   subgraph CWA["中央氣象署開放資料平臺"]
     direction TB
     DS["datastore API<br/>O-A0001/0002/0003-001 觀測<br/>F-D0047-093 鄉鎮預報<br/>W-C0034-005 颱風路徑<br/>W-C0033-001 縣市特報<br/>E-A0015/0016-001 有感地震"]
-    FA["fileapi<br/>O-A0058-005 雷達<br/>O-B0033-003 衛星"]
-    S3["S3 公開檔<br/>雷達 PNG · 衛星 KMZ"]
+    HA["historyapi<br/>O-A0059-001 雷達回波格點（過去 3 小時）"]
+    FA["fileapi<br/>O-B0033-003 衛星"]
+    S3["S3 公開檔<br/>雷達格點 XML · 衛星 KMZ"]
   end
 
   subgraph Ext["第三方靜態資源"]
@@ -106,9 +108,10 @@ flowchart LR
   Query -- "GET /api/*" --> CDN
   Map --> Carto
   Render --> Atlas
-  Render -- "雷達 PNG" --> S3
   Sync --> DS
   Sync --> FA
+  Sync --> HA
+  API -- "radar-frame：雷達格點 XML" --> S3
   Sync -- "衛星 KMZ" --> S3
   Cron -- "Deploy Hook" --> Vercel
   Vercel -. "build: npm run build:db" .-> CWA
@@ -150,7 +153,7 @@ sequenceDiagram
 |---|---|---|
 | 測站觀測 | 5 分鐘 | 5 分鐘 |
 | 鄉鎮預報 | 60 分鐘 | 10 分鐘（時段清單） |
-| 雷達 | 10 分鐘 | 10 分鐘 |
+| 雷達時間清單 | 10 分鐘 | 10 分鐘（單格 PNG 長期快取） |
 | 衛星 | 10 分鐘 | 10 分鐘 |
 | 颱風 | 30 分鐘 | 10 分鐘 |
 | 特報 | 10 分鐘 | 10 分鐘 |
@@ -177,6 +180,9 @@ aiot03/
 ├── api/                  # Vercel Functions 進入點（每個檔案一個端點）
 ├── server/
 │   ├── cwa/              # CWA client、JSON/KMZ 解析
+│   ├── radar.ts          # 雷達格點解析與上色
+│   ├── radarFrame.ts     # 單格雷達 PNG 回應
+│   ├── png.ts            # PNG 編碼
 │   ├── db.ts             # SQLite schema、種子 DB 複製到 /tmp
 │   ├── freshness.ts      # TTL、併發去重、失敗退避
 │   ├── sync.ts           # 各資料集抓取與寫入
@@ -184,6 +190,7 @@ aiot03/
 │   ├── service.ts        # 組合 freshness + repo 給 api/ 使用
 │   └── http.ts           # JSON 回應、Cache-Control、錯誤處理
 ├── shared/types.ts       # 前後端共用型別
+├── shared/radar.ts       # 雷達色標與格點範圍（前後端共用）
 ├── frontend/src/
 │   ├── components/       # MapView、DataLayers、WindParticles、Timeline、LocationCard…
 │   ├── map/              # MapLibre 圖層 hooks（image overlay、choropleth）
@@ -198,7 +205,7 @@ aiot03/
 ## 技術棧
 
 - 前端：React 19、Vite、MapLibre GL、TanStack Query、Zustand、Recharts、topojson-client
-- 後端：Vercel Functions（Node.js 22）、better-sqlite3、fflate（解 KMZ）
+- 後端：Vercel Functions（Node.js 22）、better-sqlite3、fflate（解 KMZ、PNG 壓縮）
 - 測試：Vitest（含 CWA 回應 fixtures）
 - 資料來源：[中央氣象署開放資料平臺](https://opendata.cwa.gov.tw)
 
@@ -226,7 +233,8 @@ aiot03/
 | `GET /api/towns` | 鄉鎮清單與中心點 |
 | `GET /api/forecast?town=ID` | 鄉鎮 3 小時與一週預報 |
 | `GET /api/forecast-grid[?time=ISO]` | 預報時段清單與指定時段全台鄉鎮數值 |
-| `GET /api/radar` | 最新雷達回波圖片資訊 |
+| `GET /api/radar` | 過去 3 小時雷達格點的時間與各格網址 |
+| `GET /api/radar-frame?t=YYYYMMDDHHmm` | 單格雷達回波（PNG，長期快取） |
 | `GET /api/satellite` | 最新衛星雲圖圖塊清單 |
 | `GET /api/satellite-tile?id=2/1/2` | 衛星雲圖圖塊（PNG，存於 SQLite） |
 | `GET /api/typhoon` | 活動中熱帶氣旋的過去與預測路徑 |
