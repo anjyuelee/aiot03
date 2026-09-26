@@ -10,6 +10,10 @@ import {
 } from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
+const noHistory = {
+  historyMetadata: async () => { throw new Error('unexpected historyMetadata') },
+  historyData: async () => { throw new Error('unexpected historyData') },
+}
 
 function fakeFetcher(calls: string[] = []): Fetcher {
   return {
@@ -31,6 +35,7 @@ function fakeFetcher(calls: string[] = []): Fetcher {
       if (url.endsWith('/O-B0033-003.kmz')) return sampleKmz()
       throw new Error(`unexpected url ${url}`)
     },
+    ...noHistory,
   }
 }
 
@@ -46,7 +51,7 @@ describe('syncObservations', () => {
     expect(getFetchedAt(db, 'observations')).not.toBeNull()
   })
   it('refuses to wipe data with an empty response', async () => {
-    const f: Fetcher = { dataset: async () => empty, file: async () => ({}), bytes: noBytes }
+    const f: Fetcher = { dataset: async () => empty, file: async () => ({}), bytes: noBytes, ...noHistory }
     await expect(syncObservations(db, f)).rejects.toThrow('no observations')
     expect(getFetchedAt(db, 'observations')).toBeNull()
   })
@@ -55,6 +60,7 @@ describe('syncObservations', () => {
       async dataset(id) { return id === 'O-A0002-001' ? fixture('O-A0002-001.json') : empty },
       async file() { return {} },
       bytes: noBytes,
+      ...noHistory,
     }
     await expect(syncObservations(db, f)).rejects.toThrow('no observations')
     expect(getFetchedAt(db, 'observations')).toBeNull()
@@ -83,6 +89,7 @@ describe('syncForecast', () => {
       },
       async file() { return {} },
       bytes: noBytes,
+      ...noHistory,
     }
     await expect(syncForecast(db, f)).rejects.toThrow('no week forecast')
     expect(getFetchedAt(db, 'forecast')).toBeNull()
@@ -117,6 +124,7 @@ describe('syncTyphoons', () => {
     },
     file: async () => { throw new Error('unexpected file') },
     bytes: noBytes,
+    ...noHistory,
   })
 
   it('stores typhoons and logs the fetch', async () => {
@@ -142,6 +150,7 @@ describe('syncWarnings', () => {
     },
     file: async () => { throw new Error('unexpected file') },
     bytes: noBytes,
+    ...noHistory,
   })
 
   it('stores warnings and logs the fetch', async () => {
@@ -176,6 +185,7 @@ describe('syncEarthquakes', () => {
     },
     file: async () => { throw new Error('unexpected file') },
     bytes: noBytes,
+    ...noHistory,
   })
 
   it('merges both datasets newest first and logs the fetch', async () => {
