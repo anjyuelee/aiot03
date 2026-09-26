@@ -30,14 +30,14 @@
 
 ### 2.2 `frontend/src/components/Boundaries.tsx`
 
-- 主 effect 在 `county-line` 之後、`county-selected` 之前加兩層 `line`，共用既有的 `county-shape` source，初始 filter 為 `countyFilter([])`：
+- 主 effect 在 `county-line` 之後、`county-selected` 之前加兩層 `line`，共用既有的 `county-shape` source。建立時直接帶入目前的特報清單與透明度（同選取外框以目前狀態建立 filter 的做法），主 effect 因底圖線色改變而重建時描邊才不會消失：
 
 | 圖層 | paint／layout |
 |---|---|
 | `warning-casing` | `line-color: rgba(0,0,0,0.55)`，`line-width` 依 zoom 7 → 11 由 5 到 6.5，`line-join: round` |
 | `warning-line` | `line-color: countyColor(list)`，`line-width` 依 zoom 7 → 11 由 2 到 3.5，`line-join: round`，`line-sort-key: countyRank(list)` |
 
-  初始值實機再調。cleanup 一併移除這兩層（source 由 `county-shape` 負責）。
+  兩層的 `line-opacity` 皆為 `outlineOpacity` 的值。線寬已在深色、淺色底圖與溫度熱圖、雷達上實測可辨識。cleanup 先移除這兩層，再移除 `county-shape` source（source 仍被圖層使用時無法移除）。
 - 新增兩個 effect，都在 `ready` 後才動作：
   - 特報清單（`useWarnings().data?.data ?? []`）變動時：兩層 `setFilter(countyFilter)`，`warning-line` 設 `line-color` 與 `line-sort-key`。
   - `useStore(s => outlineOpacity(s.layer, s.pos))` 變動時：兩層設 `line-opacity`。selector 回傳量化後的數字，數值不變就不重新渲染。
