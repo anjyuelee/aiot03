@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { useRadar, useRadarFrames } from '../api'
 import { useStore } from '../store'
-import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, snapRadar } from '../lib/radar'
+import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, radarStart, snapRadar, trackPos } from '../lib/radar'
 import Legend from './Legend'
 import TimeTrack, { measureHeight } from './TimeTrack'
 
@@ -44,7 +44,7 @@ export default function RadarTimeline() {
   const settled = frames.every(f => !f.isPending)
   return (
     <div className="timeline glass" ref={measure}>
-      <TimeTrack max={max} pos={Math.min(max, max + radarPos)} value={index} playing={playing} canPlay={canToggleRadar(playing, settled, n)} ariaLabel="雷達觀測時間"
+      <TimeTrack max={max} pos={trackPos(radarPos, n)} value={index} playing={playing} canPlay={canToggleRadar(playing, settled, n)} ariaLabel="雷達觀測時間"
         main={index === max ? '現在' : clock} sub={index === max ? `${clock} 觀測` : agoLabel(time, times[max])}
         ticks={times.map((_, i) => [hours.includes(i) ? 'day' : '', frames[i]?.isError ? 'failed' : frames[i]?.isPending ? 'pending' : '']
           .filter(Boolean).join(' '))}
@@ -52,7 +52,7 @@ export default function RadarTimeline() {
         labels={hours.filter(i => i <= max - 2).map(i => ({ key: times[i], at: i, text: times[i].slice(11, 16) }))}
         onToggle={() => {
           // 停在「現在」按播放時從最舊一格開始
-          if (!playing && radarPos >= 0) setRadarPos(-max)
+          if (!playing && radarPos >= 0) setRadarPos(radarStart(n))
           setPlaying(!playing)
         }}
         onScrub={p => { setPlaying(false); setRadarPos(p - max) }}

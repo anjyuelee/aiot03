@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, snapRadar } from './radar'
+import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, radarStart, snapRadar, trackPos } from './radar'
 import { SCALES } from './colorScale'
 
 describe('advanceRadar', () => {
@@ -7,10 +7,28 @@ describe('advanceRadar', () => {
     expect(advanceRadar(-18, 500, 19)).toBe(-17)
     expect(advanceRadar(-1, 250, 19)).toBe(-0.5)
   })
-  it('lingers on the latest frame for 1.5 s, then restarts from the oldest', () => {
-    expect(advanceRadar(0, 1000, 19)).toBe(2)
-    expect(radarIndex(2, 19)).toBe(18)
-    expect(advanceRadar(2, 500, 19)).toBe(-18)
+  it('shows every frame for 500 ms and lingers on the latest for 1.5 s more, loop after loop', () => {
+    // 以 60 fps 播兩輪，量每一格實際停留多久
+    const frame = 1000 / 60
+    const shown: number[][] = [[]]
+    let pos = radarStart(19)
+    let prev = radarIndex(pos, 19)
+    let since = 0
+    for (let t = 0; t < 2 * 11_000; t += frame) {
+      pos = advanceRadar(pos, frame, 19)
+      const i = radarIndex(pos, 19)
+      since += frame
+      if (i === prev) continue
+      shown[shown.length - 1][prev] = since
+      if (i === 0) shown.push([])
+      prev = i
+      since = 0
+    }
+    for (const loop of shown.slice(0, 2)) {
+      expect(loop).toHaveLength(19)
+      loop.slice(0, 18).forEach(ms => expect(ms).toBeCloseTo(500, -1.5))
+      expect(loop[18]).toBeCloseTo(2000, -1.5)
+    }
   })
 })
 
@@ -25,6 +43,15 @@ describe('snapRadar / radarIndex', () => {
     expect(radarIndex(-30, 19)).toBe(0)
     // 清單變短（缺格）時停在「現在」仍是最後一格
     expect(radarIndex(0, 17)).toBe(16)
+  })
+})
+
+describe('trackPos', () => {
+  it('keeps the slider on the rail at the playback start, during the dwell and after the list shrinks', () => {
+    expect(trackPos(radarStart(19), 19)).toBe(0)
+    expect(trackPos(-9, 19)).toBe(9)
+    expect(trackPos(2, 19)).toBe(18)
+    expect(trackPos(-18, 17)).toBe(0)
   })
 })
 
