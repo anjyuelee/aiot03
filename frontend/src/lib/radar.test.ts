@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { advanceRadar, agoLabel, hourTicks, radarIndex, snapRadar } from './radar'
+import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, snapRadar } from './radar'
 import { SCALES } from './colorScale'
 
 describe('advanceRadar', () => {
@@ -55,5 +55,16 @@ describe('radar scale', () => {
     expect(stops[0]).toEqual([0, '#00ffff'])
     expect(stops[15]).toEqual([15, '#00ff00'])
     expect(stops[65]).toEqual([65, '#9600ff'])
+  })
+})
+
+describe('canToggleRadar', () => {
+  it('always lets a running replay be paused, even while a new frame is loading', () => {
+    expect(canToggleRadar(true, false, 19)).toBe(true)
+  })
+  it('only starts playback once every frame has settled and there is more than one', () => {
+    expect(canToggleRadar(false, false, 19)).toBe(false)
+    expect(canToggleRadar(false, true, 1)).toBe(false)
+    expect(canToggleRadar(false, true, 19)).toBe(true)
   })
 })

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { useRadar, useRadarFrames } from '../api'
 import { useStore } from '../store'
-import { advanceRadar, agoLabel, hourTicks, radarIndex, snapRadar } from '../lib/radar'
+import { advanceRadar, agoLabel, canToggleRadar, hourTicks, radarIndex, snapRadar } from '../lib/radar'
 import Legend from './Legend'
 import TimeTrack, { measureHeight } from './TimeTrack'
 
@@ -40,11 +40,11 @@ export default function RadarTimeline() {
   const time = times[index]
   const clock = time.slice(11, 16)
   const hours = hourTicks(times)
-  // 全部格子都有結果（成功或失敗）才能播放，動畫不會停下來等
-  const ready = frames.every(f => !f.isPending)
+  // 全部格子都有結果（成功或失敗）才能播放，動畫不會停下來等；清單更新多出的新格載入中時仍可暫停
+  const settled = frames.every(f => !f.isPending)
   return (
     <div className="timeline glass" ref={measure}>
-      <TimeTrack max={max} pos={Math.min(max, max + radarPos)} value={index} playing={playing} canPlay={ready && n > 1} ariaLabel="雷達觀測時間"
+      <TimeTrack max={max} pos={Math.min(max, max + radarPos)} value={index} playing={playing} canPlay={canToggleRadar(playing, settled, n)} ariaLabel="雷達觀測時間"
         main={index === max ? '現在' : clock} sub={index === max ? `${clock} 觀測` : agoLabel(time, times[max])}
         ticks={times.map((_, i) => [hours.includes(i) ? 'day' : '', frames[i]?.isError ? 'failed' : frames[i]?.isPending ? 'pending' : '']
           .filter(Boolean).join(' '))}

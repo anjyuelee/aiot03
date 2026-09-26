@@ -11,6 +11,9 @@ export function advanceRadar(pos: number, dt: number, n: number): number {
 /** 停下或放開時對齊整格；停留區間算「現在」 */
 export const snapRadar = (pos: number) => Math.min(0, Math.round(pos))
 
+/** 播放中一律可以暫停；要開始播放得等每格都有結果（成功或失敗），且不只一格 */
+export const canToggleRadar = (playing: boolean, settled: boolean, n: number) => playing || (settled && n > 1)
+
 /** 位置 → frames（由舊到新）的 index */
 export const radarIndex = (pos: number, n: number) => Math.min(n - 1, Math.max(0, n - 1 + Math.round(pos)))
 
