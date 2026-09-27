@@ -148,6 +148,24 @@ describe('badgeText', () => {
     expect(badgeText(groupByKind([w('10002', '宜蘭縣', '大雨'), w('10015', '花蓮縣', '濃霧')]))).toBe('⚠ 2 則特報')
     expect(badgeText(groupByKind([w('63000', '臺北市', '高溫', { significance: '資訊', level: '黃色燈號' })]))).toBe('⚠ 高溫資訊・黃色燈號 · 1 縣市')
   })
+
+  // 2026-09-27 17:32 發布、隔天 08:00–17:00 的高溫資訊
+  const heat = groupByKind(['63000', '65000'].map(code => w(code, '', '高溫', {
+    significance: '資訊', level: '黃色燈號', start: '2026-09-28T08:00:00+08:00', end: '2026-09-28T17:00:00+08:00',
+  })))
+  const at = (iso: string) => new Date(iso)
+  it('adds the start time when the only group has not started yet', () => {
+    expect(badgeText(heat, at('2026-09-27T18:00:00+08:00'))).toBe('⚠ 高溫資訊・黃色燈號 · 2 縣市 · 明天 08:00 起')
+    expect(badgeText(heat, at('2026-09-28T00:46:00+08:00'))).toBe('⚠ 高溫資訊・黃色燈號 · 2 縣市 · 今天 08:00 起')
+  })
+  it('leaves the start time out once in effect or when there is none', () => {
+    expect(badgeText(heat, at('2026-09-28T08:00:00+08:00'))).toBe('⚠ 高溫資訊・黃色燈號 · 2 縣市')
+    expect(badgeText(groupByKind([w('10002', '宜蘭縣', '大雨', { start: null })]), at('2026-09-24T00:00:00+08:00'))).toBe('⚠ 大雨特報 · 1 縣市')
+  })
+  it('keeps counting several groups even when one has not started', () => {
+    const list = [w('10002', '宜蘭縣', '大雨'), ...heat[0].items]
+    expect(badgeText(groupByKind(list), at('2026-09-25T06:00:00+08:00'))).toBe('⚠ 2 則特報')
+  })
 })
 
 describe('fmtValid', () => {

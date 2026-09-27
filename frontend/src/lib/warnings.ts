@@ -1,6 +1,6 @@
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 import type { Warning, WarningText } from '../../../shared/types'
-import { fmtMD } from './format'
+import { fmtMD, relDay, taipeiDate } from './format'
 import type { LayerId } from './layers'
 
 export interface Severity { rank: number; color: string }
@@ -113,11 +113,18 @@ export function textSummary(t: WarningText): string {
   return t.issued ? `全文 · ${fmtMD(t.issued.slice(0, 10))} ${t.issued.slice(11, 16)} 發布` : '全文'
 }
 
-/** 左上角徽章文字；無特報回傳 null */
-export function badgeText(groups: WarningGroup[]): string | null {
+/**
+ * 左上角徽章文字；無特報回傳 null。只有一組且還沒生效時（例如前一晚發布、隔天 08:00 起的高溫資訊）標出開始時間，
+ * 才不會被當成已過期的特報；CWA 時間固定 +08:00，字串可直接比較、取字元
+ */
+export function badgeText(groups: WarningGroup[], now = new Date()): string | null {
   if (groups.length === 0) return null
-  if (groups.length === 1) return `⚠ ${groups[0].title} · ${groups[0].items.length} 縣市`
-  return `⚠ ${groups.length} 則特報`
+  if (groups.length > 1) return `⚠ ${groups.length} 則特報`
+  const { title, items } = groups[0]
+  const text = `⚠ ${title} · ${items.length} 縣市`
+  const start = items.flatMap(w => (w.start ? [w.start] : [])).sort()[0]
+  if (!start || Date.parse(start) <= now.getTime()) return text
+  return `${text} · ${relDay(start.slice(0, 10), taipeiDate(now))} ${start.slice(11, 16)} 起`
 }
 
 /** 有效時間：同日「9/25 05:30 – 17:30」，跨日結束也帶日期；缺任一端只寫有的那端 */
