@@ -25,7 +25,11 @@ export function removeLayerAndSource(map: MlMap, id: string) {
   }
 }
 
-/** fitBounds 時避開資訊卡：桌機卡片在左側（340px＋間距），手機是底部抽屜 */
-export const cardFitPadding = () => matchMedia('(max-width: 640px)').matches
-  ? { top: 60, bottom: Math.round(innerHeight * 0.45), left: 20, right: 20 }
-  : { top: 60, bottom: 110, left: 380, right: 140 }
+/** fitBounds 時避開資訊卡：桌機卡片在左側（340px＋間距）；手機卡片在底部，依卡片實際頂端留白，量不到時留 45% */
+export function cardFitPadding() {
+  if (!matchMedia('(max-width: 640px)').matches) return { top: 60, bottom: 110, left: 380, right: 140 }
+  // offsetTop 不受卡片滑入動畫的 transform 影響
+  const card = document.querySelector<HTMLElement>('.card')
+  const bottom = card ? innerHeight - card.offsetTop + 20 : Math.round(innerHeight * 0.45)
+  return { top: 60, bottom, left: 20, right: 20 }
+}

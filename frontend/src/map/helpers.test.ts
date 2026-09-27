@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import type { Map as MlMap } from 'maplibre-gl'
-import { TOWN_HIT, TYPHOON_FOLLOW_BOTTOM, dataLayerBefore, overlayBefore } from './helpers'
+import { TOWN_HIT, TYPHOON_FOLLOW_BOTTOM, cardFitPadding, dataLayerBefore, overlayBefore } from './helpers'
 
 // 只模擬插入點會用到的兩個方法；layers 由下往上，firstSymbolLayer 靠 type 找文字圖層
 const fakeMap = (layers: [id: string, type: string][]) => ({
@@ -27,5 +27,23 @@ describe('layer insertion points', () => {
     const map = fakeMap([...base.slice(0, 2), [TYPHOON_FOLLOW_BOTTOM, 'fill'], [TOWN_HIT, 'fill'], base[2]])
     expect(dataLayerBefore(map)).toBe(TYPHOON_FOLLOW_BOTTOM)
     expect(overlayBefore(map)).toBe(TOWN_HIT)
+  })
+})
+
+describe('cardFitPadding', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  // 手機 390×664；cardTop 為資訊卡頂端，null 表示畫面上沒有卡片
+  const phone = (cardTop: number | null) => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    vi.stubGlobal('innerHeight', 664)
+    vi.stubGlobal('document', { querySelector: () => (cardTop == null ? null : { offsetTop: cardTop }) })
+  }
+  it('keeps the fitted area above the phone card', () => {
+    phone(329)
+    expect(cardFitPadding().bottom).toBe(664 - 329 + 20)
+  })
+  it('falls back to 45% of the height without a card', () => {
+    phone(null)
+    expect(cardFitPadding().bottom).toBe(Math.round(664 * 0.45))
   })
 })
