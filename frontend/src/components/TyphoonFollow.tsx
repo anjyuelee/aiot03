@@ -21,7 +21,7 @@ export default function TyphoonFollow({ map, list, times, pos, tracks }: {
 }) {
   const ink = useStore(s => inkOf(s.basemap))
   const dark = useStore(s => BASEMAPS[s.basemap].dark)
-  // 時間軸位置上的中心與風圈；重建圖層時帶入目前位置，不必讓時間軸的每一步都重建
+  // 時間軸位置上的中心、七級風圈與潛勢圓；重建圖層時帶入目前位置，不必讓時間軸的每一步都重建
   const atPos = useMemo(() => followGeoJSON(list, times, pos), [list, times, pos])
   const latest = useRef(atPos)
   latest.current = atPos

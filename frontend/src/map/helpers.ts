@@ -9,7 +9,7 @@ export const firstSymbolLayer = (map: MlMap) => map.getLayersOrder().find(id => 
 
 /** 鄉鎮點擊用的透明填色，也是行政界線群組最底層；資料圖層插在它之下，界線才不會被熱圖蓋住 */
 export const TOWN_HIT = 'town-hit'
-/** 天氣圖層上颱風群組的最底層 */
+/** 跟著時間軸移動的颱風群組（天氣圖層與颱風圖層）的最底層 */
 export const TYPHOON_FOLLOW_BOTTOM = 'typhoon-follow-wind-fill'
 /** 疊在資料圖層之上、行政界線之下 */
 export const overlayBefore = (map: MlMap) => map.getLayer(TOWN_HIT) ? TOWN_HIT : firstSymbolLayer(map)
