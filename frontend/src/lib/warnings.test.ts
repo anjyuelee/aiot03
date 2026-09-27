@@ -5,7 +5,7 @@ import {
 import type { Warning } from '../../../shared/types'
 
 const w = (countyCode: string, county: string, phenomena: string, extra: Partial<Warning> = {}): Warning => ({
-  countyCode, county, phenomena, significance: '特報',
+  countyCode, county, phenomena, significance: '特報', level: null, towns: null,
   start: '2026-09-25T05:30:00+08:00', end: '2026-09-25T17:30:00+08:00', ...extra,
 })
 

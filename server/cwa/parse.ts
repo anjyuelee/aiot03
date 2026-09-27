@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- CWA JSON is external, shapes verified by fixtures */
 import type {
-  Bounds, Earthquake, ForecastSlot, ImageKind, ImageOverlay, QuakeCounty, QuakeStation, Town, Typhoon, TyphoonFix, Warning, WeekSlot,
+  Bounds, Earthquake, ForecastSlot, ImageKind, ImageOverlay, QuakeCounty, QuakeStation, Town, Typhoon, TyphoonFix, Warning, WarningText,
+  WeekSlot,
 } from '../../shared/types.js'
 
 export interface StationRow { id: string; name: string; county: string; town: string; lat: number; lon: number }
@@ -220,12 +221,83 @@ export function parseWarnings(json: any): Warning[] {
         county: loc.locationName,
         phenomena,
         significance: h.info?.significance || '特報',
+        level: null,
+        towns: null,
         start: toTaipeiIso(h.validTime?.startTime),
         end: toTaipeiIso(h.validTime?.endTime),
       })
     }
   }
   return out
+}
+
+/** 7 碼鄉鎮 geocode（Taiwan_Geocode_103）換成 5 碼縣市碼：直轄市以 6 開頭，只取前 2 碼；其他取前 5 碼 */
+export function townCountyCode(geocode: string): string {
+  return geocode.startsWith('6') ? geocode.slice(0, 2).padEnd(5, '0') : geocode.slice(0, 5)
+}
+
+// CAP 資料集沒有新訊息時仍回傳最後一則，過期或解除的訊息都要濾掉
+function activeInfos(json: any, now: string): any[] {
+  return (json.records?.info ?? []).filter((i: any) =>
+    i.urgency !== 'Past' && !String(i.headline ?? '').includes('解除') && Date.parse(i.expires) > Date.parse(now))
+}
+
+const HEAT_SIGNIFICANCE = '資訊'
+
+/** W-C0033-005 高溫資訊：鄉鎮歸到縣市，每個縣市＋燈號一列 */
+export function parseHeat(json: any, now: string): Warning[] {
+  const rows = new Map<string, Warning>()
+  for (const info of activeInfos(json, now)) {
+    const event: string = info.event ?? '高溫'
+    const severity: string | undefined = info.parameter?.find((p: any) => p.valueName === 'severity_level')?.value
+    const level = (severity?.startsWith(event) ? severity.slice(event.length) : severity) || null
+    for (const area of info.area ?? []) {
+      const code = String(area.geocode?.value ?? '')
+      const desc = String(area.areaDesc ?? '')
+      if (!code || !desc) continue
+      const countyCode = code.length === 7 ? townCountyCode(code) : toCountyCode(code)
+      const key = `${countyCode} ${level}`
+      const row = rows.get(key) ?? {
+        countyCode, county: desc.slice(0, 3), phenomena: event, significance: HEAT_SIGNIFICANCE, level, towns: [],
+        start: toTaipeiIso(info.onset), end: toTaipeiIso(info.expires),
+      }
+      // 縣市層級的地區代表整個縣市都在範圍內，之後不再列鄉鎮
+      if (code.length !== 7) row.towns = null
+      else row.towns?.push(desc.slice(3))
+      rows.set(key, row)
+    }
+  }
+  return [...rows.values()]
+}
+
+/** W-C0033-005 的說明與注意事項，當作高溫資訊的全文 */
+export function parseHeatText(json: any, now: string): WarningText[] {
+  const info = activeInfos(json, now)[0]
+  if (!info) return []
+  const text = [info.description, info.instruction].filter(Boolean).join('\n\n').trim()
+  return text ? [{ kind: (info.event ?? '高溫') + HEAT_SIGNIFICANCE, issued: toTaipeiIso(info.effective), text }] : []
+}
+
+// CWA 的巢狀節點只有一筆時可能不是陣列
+const asList = (x: any): any[] => (x == null ? [] : Array.isArray(x) ? x : [x])
+
+/** W-C0033-002：每則特報的全文對應到它包含的每個種類；同一種類出現在多則時取發布時間最新者 */
+export function parseWarningTexts(json: any): WarningText[] {
+  const latest = new Map<string, WarningText>()
+  for (const record of asList(json.records?.record)) {
+    const text = String(asList(record.contents?.content)[0]?.contentText ?? '').trim()
+    if (!text) continue
+    const issued = toTaipeiIso(record.datasetInfo?.issueTime)
+    const hazards = record.hazardConditions?.hazards
+    for (const h of asList(hazards?.hazard ?? hazards)) {
+      const phenomena = h.info?.phenomena
+      if (!phenomena) continue
+      const kind = phenomena + (h.info.significance || '特報')
+      const prev = latest.get(kind)
+      if (!prev || (issued ?? '') > (prev.issued ?? '')) latest.set(kind, { kind, issued, text })
+    }
+  }
+  return [...latest.values()]
 }
 
 function quakeStation(s: any): QuakeStation | null {

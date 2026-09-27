@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { fixture } from '../__fixtures__/load.js'
 import {
   num, parseWeatherStations, parseRainStations, parseForecast3h, parseForecastWeek, parseImage, parseRadarTimes, parseTyphoons, parseWarnings,
-  parseEarthquakes,
+  parseEarthquakes, parseHeat, parseHeatText, parseWarningTexts, townCountyCode,
 } from './parse.js'
 
 describe('num', () => {
@@ -166,7 +166,7 @@ describe('parseWarnings', () => {
   it('normalises both time formats to +08:00 ISO and keeps a missing end null', () => {
     const [rain, wind] = list.filter(w => w.county === '宜蘭縣')
     expect(rain).toEqual({
-      countyCode: '10002', county: '宜蘭縣', phenomena: '大雨', significance: '特報',
+      countyCode: '10002', county: '宜蘭縣', phenomena: '大雨', significance: '特報', level: null, towns: null,
       start: '2026-09-25T05:30:00+08:00', end: '2026-09-25T17:30:00+08:00',
     })
     expect(wind.start).toBe('2026-09-25T00:00:00+08:00')
@@ -178,6 +178,106 @@ describe('parseWarnings', () => {
     const quiet = { records: { location: [{ locationName: '宜蘭縣', geocode: 10002, hazardConditions: { hazards: [] } }] } }
     expect(parseWarnings(quiet)).toEqual([])
     expect(parseWarnings({ records: {} })).toEqual([])
+  })
+})
+
+describe('townCountyCode', () => {
+  it('maps municipality towns by their first two digits and other towns by their first five', () => {
+    expect(['6300800', '6500100', '6702400', '1000404', '1000715', '0902006'].map(townCountyCode))
+      .toEqual(['63000', '65000', '67000', '10004', '10007', '09020'])
+  })
+})
+
+describe('parseHeat', () => {
+  const json = fixture('W-C0033-005.json')
+  const BEFORE = '2026-09-27T04:00:00.000Z' // 12:00 台灣時間，有效期間內
+  const AFTER = '2026-09-27T09:00:00.000Z' // 17:00 台灣時間，剛好到期
+  const list = parseHeat(json, BEFORE)
+
+  it('groups towns into one row per county', () => {
+    expect(list.map(w => w.countyCode)).toEqual(['63000', '65000', '68000', '10007', '10008', '67000', '10013'])
+    expect(list[0]).toEqual({
+      countyCode: '63000', county: '臺北市', phenomena: '高溫', significance: '資訊', level: '黃色燈號',
+      towns: ['文山區', '大安區', '中正區', '萬華區'],
+      start: '2026-09-27T08:00:00+08:00', end: '2026-09-27T17:00:00+08:00',
+    })
+    expect(list.find(w => w.county === '彰化縣')!.towns).toEqual(['埔心鄉', '永靖鄉'])
+  })
+
+  it('drops expired, past and lifted messages', () => {
+    expect(parseHeat(json, AFTER)).toEqual([])
+    const info = json.records.info[0]
+    expect(parseHeat({ records: { info: [{ ...info, urgency: 'Past' }] } }, BEFORE)).toEqual([])
+    expect(parseHeat({ records: { info: [{ ...info, headline: '解除高溫資訊' }] } }, BEFORE)).toEqual([])
+    expect(parseHeat({ records: {} }, BEFORE)).toEqual([])
+  })
+
+  it('keeps one row per level and lists no towns for county-wide areas', () => {
+    const info = json.records.info[0]
+    const orange = {
+      ...info,
+      parameter: [{ valueName: 'severity_level', value: '高溫橙色燈號' }],
+      area: [
+        { areaDesc: '臺北市士林區', geocode: { value: '6301100' } },
+        { areaDesc: '臺東縣', geocode: { value: '10014' } },
+      ],
+    }
+    const rows = parseHeat({ records: { info: [orange, info] } }, BEFORE)
+    expect(rows.filter(w => w.countyCode === '63000').map(w => [w.level, w.towns])).toEqual([
+      ['橙色燈號', ['士林區']],
+      ['黃色燈號', ['文山區', '大安區', '中正區', '萬華區']],
+    ])
+    expect(rows.find(w => w.countyCode === '10014')).toMatchObject({ county: '臺東縣', level: '橙色燈號', towns: null })
+  })
+})
+
+describe('parseHeatText', () => {
+  const json = fixture('W-C0033-005.json')
+
+  it('joins the description and the instruction', () => {
+    const [t] = parseHeatText(json, '2026-09-27T04:00:00.000Z')
+    expect(t.kind).toBe('高溫資訊')
+    expect(t.issued).toBe('2026-09-27T07:30:00+08:00')
+    expect(t.text.startsWith('各地天氣高溫炎熱')).toBe(true)
+    expect(t.text).toContain('請注意。\n\n減少戶外活動')
+  })
+
+  it('is empty once the message expires', () => {
+    expect(parseHeatText(json, '2026-09-27T09:00:00.000Z')).toEqual([])
+  })
+})
+
+describe('parseWarningTexts', () => {
+  const texts = parseWarningTexts(fixture('W-C0033-002.json'))
+
+  it('maps every kind in a record to its trimmed text', () => {
+    expect(texts.map(t => t.kind).sort()).toEqual(['大雨特報', '颱風警報'])
+    expect(texts.find(t => t.kind === '颱風警報')!.text).toBe('海上陸上颱風警報第5報。\n颱風外圍環流影響，今（25）日臺北市有局部大雨發生的機率。')
+  })
+
+  it('takes the latest issued text when a kind appears in several records', () => {
+    expect(texts.find(t => t.kind === '大雨特報')).toMatchObject({ issued: '2026-09-25T08:30:00+08:00', text: expect.stringContaining('颱風警報第5報') })
+  })
+
+  it('accepts single objects in place of arrays and skips empty text', () => {
+    const one = {
+      records: {
+        record: [
+          {
+            datasetInfo: { issueTime: '2026-09-25 05:30:00' },
+            contents: { content: { contentText: '濃霧' } },
+            hazardConditions: { hazards: { hazard: { info: { phenomena: '濃霧', significance: '特報' } } } },
+          },
+          {
+            datasetInfo: { issueTime: '2026-09-25 06:30:00' },
+            contents: { content: { contentText: '  ' } },
+            hazardConditions: { hazards: { hazard: { info: { phenomena: '低溫', significance: '特報' } } } },
+          },
+        ],
+      },
+    }
+    expect(parseWarningTexts(one)).toEqual([{ kind: '濃霧特報', issued: '2026-09-25T05:30:00+08:00', text: '濃霧' }])
+    expect(parseWarningTexts({ records: { record: [] } })).toEqual([])
   })
 })
 

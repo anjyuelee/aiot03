@@ -128,11 +128,23 @@ export interface Warning {
   county: string
   /** 例：大雨、豪雨、陸上強風 */
   phenomena: string
-  /** 例：特報、警報 */
+  /** 例：特報、警報、資訊 */
   significance: string
+  /** 燈號，例：黃色燈號；只有高溫資訊有值 */
+  level: string | null
+  /** 受影響鄉鎮；整個縣市都在範圍內時為 null（W-C0033-001 的特報皆為 null） */
+  towns: string[] | null
   /** +08:00 ISO；CWA 未提供時為 null */
   start: string | null
   end: string | null
+}
+
+export interface WarningText {
+  /** 種類＋等級，例：大雨特報、高溫資訊；等於卡片分組標題去掉燈號 */
+  kind: string
+  /** 發布時間，+08:00 ISO */
+  issued: string | null
+  text: string
 }
 
 export interface QuakeStation {
