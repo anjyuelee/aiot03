@@ -1,12 +1,13 @@
 import type {
   ApiResponse, Earthquake, ForecastGrid, Observation, RadarFrames, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+  WarningText,
 } from '../shared/types.js'
 import { RADAR_BOUNDS } from '../shared/radar.js'
 import { getDb } from './db.js'
 import { ensureFresh } from './freshness.js'
 import {
   getGrid, getImage, getSatelliteTile, getTownForecast, listEarthquakes, listGridTimes, listObservations, listRadarFrames, listSatelliteTiles, listTowns,
-  listTyphoons, listWarnings,
+  listTyphoons, listWarnings, listWarningTexts,
 } from './repo.js'
 import { syncEarthquakes, syncForecast, syncImage, syncObservations, syncRadar, syncTyphoons, syncWarnings } from './sync.js'
 import { frameKey } from './radar.js'
@@ -76,6 +77,13 @@ export async function getWarnings(): Promise<ApiResponse<Warning[]>> {
   const db = getDb()
   const meta = await ensureFresh(db, 'warnings', () => syncWarnings(db))
   return { data: listWarnings(db), ...meta }
+}
+
+// 與 getWarnings 共用同一次同步
+export async function getWarningTexts(): Promise<ApiResponse<WarningText[]>> {
+  const db = getDb()
+  const meta = await ensureFresh(db, 'warnings', () => syncWarnings(db))
+  return { data: listWarningTexts(db), ...meta }
 }
 
 export async function getEarthquakes(): Promise<ApiResponse<Earthquake[]>> {

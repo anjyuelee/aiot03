@@ -4,11 +4,11 @@ import { cwa, type Fetcher } from './cwa/client.js'
 import { parseSatelliteKmz } from './cwa/kmz.js'
 import {
   parseEarthquakes, parseForecast3h, parseForecastWeek, parseImage, parseRadarTimes, parseRainStations, parseTyphoons, parseWarnings,
-  parseWeatherStations,
+  parseWeatherStations, parseHeat, parseHeatText, parseWarningTexts,
 } from './cwa/parse.js'
 import {
   logFetch, replaceEarthquakes, replaceForecasts, replaceObservations, replaceRadarFrames, replaceSatelliteTiles, replaceTyphoons, replaceWarnings,
-  upsertImage,
+  upsertImage, replaceWarningTexts,
 } from './repo.js'
 
 // F-D0047-001 起每 4 號一個縣市：+0 為 3 天預報、+2 為一週預報
@@ -79,12 +79,15 @@ export async function syncTyphoons(db: DB, f: Fetcher = cwa): Promise<void> {
   logFetch(db, 'typhoon', now())
 }
 
-// 無特報時 CWA 仍回傳 22 縣市、各自 hazards 為空，照樣清空舊資料；連縣市都沒有則視為異常回應
+// 無特報時 CWA 仍回傳 22 縣市、各自 hazards 為空，照樣清空舊資料；連縣市都沒有則視為異常回應。
+// 高溫資訊不在 W-C0033-001，從 W-C0033-005 補上；全文來自 W-C0033-002。三個一起抓，任一失敗就整批保留舊資料
 export async function syncWarnings(db: DB, f: Fetcher = cwa): Promise<void> {
-  const json = await f.dataset('W-C0033-001')
-  if (!json.records?.location?.length) throw new Error('CWA returned no warning locations')
-  replaceWarnings(db, parseWarnings(json))
-  logFetch(db, 'warnings', now())
+  const [counties, heat, texts] = await Promise.all(['W-C0033-001', 'W-C0033-005', 'W-C0033-002'].map(id => f.dataset(id)))
+  if (!counties.records?.location?.length) throw new Error('CWA returned no warning locations')
+  const at = now()
+  replaceWarnings(db, [...parseWarnings(counties), ...parseHeat(heat, at)])
+  replaceWarningTexts(db, [...parseWarningTexts(texts), ...parseHeatText(heat, at)])
+  logFetch(db, 'warnings', at)
 }
 
 // 兩個資料集都固定回傳最新 16 筆；任一個沒有報告就視為異常回應，整批保留舊資料，兩者才會是同一版

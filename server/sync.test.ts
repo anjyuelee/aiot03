@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { zipSync } from 'fflate'
 import { fixture } from './__fixtures__/load.js'
 import { sampleKmz } from './__fixtures__/kmz.js'
@@ -7,7 +7,7 @@ import type { Fetcher } from './cwa/client.js'
 import { syncObservations, syncForecast, syncImage, syncRadar, syncTyphoons, syncWarnings, syncEarthquakes } from './sync.js'
 import {
   listObservations, listTowns, getTownForecast, getImage, getFetchedAt, listSatelliteTiles, listTyphoons, listWarnings, listEarthquakes,
-  listRadarFrames,
+  listRadarFrames, listWarningTexts,
 } from './repo.js'
 
 const empty = { success: 'true', records: { Station: [], Locations: [] } }
@@ -169,9 +169,23 @@ describe('syncTyphoons', () => {
 })
 
 describe('syncWarnings', () => {
-  const withWarnings = (json: unknown): Fetcher => ({
+  // 台灣時間 12:00，fixture 的高溫資訊（08:00–17:00）有效
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-27T12:00:00+08:00'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  const quietHeat = { success: 'true', records: { info: [] } }
+  const quietTexts = { success: 'true', records: { record: [] } }
+  const withWarnings = (counties: unknown, heat: unknown = fixture('W-C0033-005.json'), texts: unknown = fixture('W-C0033-002.json')): Fetcher => ({
     async dataset(id) {
-      if (id === 'W-C0033-001') return json
+      if (id === 'W-C0033-001') return counties
+      if (id === 'W-C0033-005') {
+        if (heat instanceof Error) throw heat
+        return heat
+      }
+      if (id === 'W-C0033-002') return texts
       throw new Error(`unexpected dataset ${id}`)
     },
     file: async () => { throw new Error('unexpected file') },
@@ -179,25 +193,38 @@ describe('syncWarnings', () => {
     ...noHistory,
   })
 
-  it('stores warnings and logs the fetch', async () => {
+  it('stores county warnings, heat info and texts, and logs the fetch', async () => {
     await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
-    expect(listWarnings(db)).toHaveLength(5)
-    expect(getFetchedAt(db, 'warnings')).not.toBeNull()
+    const rows = listWarnings(db)
+    expect(rows).toHaveLength(12)
+    expect(rows.filter(w => w.phenomena === '高溫')).toHaveLength(7)
+    expect(listWarningTexts(db).map(t => t.kind)).toEqual(['大雨特報', '颱風警報', '高溫資訊'])
+    expect(getFetchedAt(db, 'warnings')).toBe('2026-09-27T04:00:00.000Z')
   })
 
-  it('clears old warnings when none are active', async () => {
+  it('clears old warnings and texts when none are active', async () => {
     await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
     const quiet = fixture('W-C0033-001.json')
     for (const loc of quiet.records.location) loc.hazardConditions.hazards = []
-    await syncWarnings(db, withWarnings(quiet))
+    await syncWarnings(db, withWarnings(quiet, quietHeat, quietTexts))
     expect(listWarnings(db)).toEqual([])
+    expect(listWarningTexts(db)).toEqual([])
   })
 
   it('refuses to wipe warnings when the response has no locations', async () => {
     await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
     const fetchedAt = getFetchedAt(db, 'warnings')
     await expect(syncWarnings(db, withWarnings({ success: 'true', records: { location: [] } }))).rejects.toThrow('no warning locations')
-    expect(listWarnings(db)).toHaveLength(5)
+    expect(listWarnings(db)).toHaveLength(12)
+    expect(getFetchedAt(db, 'warnings')).toBe(fetchedAt)
+  })
+
+  it('keeps both tables when one dataset fails', async () => {
+    await syncWarnings(db, withWarnings(fixture('W-C0033-001.json')))
+    const fetchedAt = getFetchedAt(db, 'warnings')
+    await expect(syncWarnings(db, withWarnings(fixture('W-C0033-001.json'), new Error('CWA HTTP 500'), quietTexts))).rejects.toThrow('CWA HTTP 500')
+    expect(listWarnings(db)).toHaveLength(12)
+    expect(listWarningTexts(db)).toHaveLength(3)
     expect(getFetchedAt(db, 'warnings')).toBe(fetchedAt)
   })
 })
