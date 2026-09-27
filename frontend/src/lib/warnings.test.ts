@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  COUNTY_SELECTED_WIDTH, WARNING_LINE_WIDTH, badgeText, countyColor, countyFilter, countyRank, fmtValid, groupByKind, outlineOpacity, severityOf, worstByCounty,
+  COUNTY_SELECTED_WIDTH, WARNING_LINE_WIDTH, badgeText, countyColor, countyFilter, countyRank, fmtValid, groupByKind, outlineOpacity, severityOf, textSummary, textsByGroup,
+  worstByCounty,
 } from './warnings'
-import type { Warning } from '../../../shared/types'
+import type { Warning, WarningText } from '../../../shared/types'
 
 const w = (countyCode: string, county: string, phenomena: string, extra: Partial<Warning> = {}): Warning => ({
   countyCode, county, phenomena, significance: '特報', level: null, towns: null,
@@ -11,11 +12,16 @@ const w = (countyCode: string, county: string, phenomena: string, extra: Partial
 
 describe('severityOf', () => {
   it('ranks by keyword, heaviest first', () => {
-    const ranks = ['颱風', '超大豪雨', '大豪雨', '豪雨', '大雨', '低溫', '陸上強風', '濃霧'].map(p => severityOf(p).rank)
-    expect(ranks).toEqual([7, 6, 6, 5, 4, 3, 2, 1])
+    const ranks = ['颱風', '超大豪雨', '大豪雨', '豪雨', '大雨', '高溫', '低溫', '陸上強風', '濃霧'].map(p => severityOf(p).rank)
+    expect(ranks).toEqual([8, 7, 7, 6, 5, 4, 3, 2, 1])
+  })
+  it('gives heat its own colour, apart from the rain colours', () => {
+    const heat = severityOf('高溫').color
+    expect(heat).toBe('#9c4221')
+    expect(['颱風', '大豪雨', '豪雨', '大雨', '低溫', '強風', '濃霧'].map(p => severityOf(p).color)).not.toContain(heat)
   })
   it('falls back to grey for unknown kinds', () => {
-    expect(severityOf('高溫')).toEqual({ rank: 0, color: '#868e96' })
+    expect(severityOf('長浪')).toEqual({ rank: 0, color: '#868e96' })
   })
 })
 
@@ -26,6 +32,12 @@ describe('worstByCounty', () => {
     expect(m.get('10015')).toEqual(severityOf('濃霧'))
     expect(m.size).toBe(2)
     expect(worstByCounty([w('10002', '宜蘭縣', '豪雨'), w('10002', '宜蘭縣', '陸上強風')]).get('10002')).toEqual(severityOf('豪雨'))
+  })
+  it('puts heat below rain and above cold', () => {
+    const hot = (countyCode: string, county: string) => w(countyCode, county, '高溫', { significance: '資訊', level: '黃色燈號' })
+    const m = worstByCounty([hot('63000', '臺北市'), w('63000', '臺北市', '大雨'), w('10002', '宜蘭縣', '低溫'), hot('10002', '宜蘭縣')])
+    expect(m.get('63000')).toEqual(severityOf('大雨'))
+    expect(m.get('10002')).toEqual(severityOf('高溫'))
   })
 })
 
@@ -44,7 +56,7 @@ describe('countyFilter', () => {
     expect(countyFilter([])).toEqual(['in', ['get', 'COUNTYCODE'], ['literal', []]])
   })
   it('lists each warned county once, unknown kinds included', () => {
-    expect(countyFilter([w('10002', '宜蘭縣', '大雨'), w('10002', '宜蘭縣', '陸上強風'), w('10015', '花蓮縣', '高溫')])).toEqual(
+    expect(countyFilter([w('10002', '宜蘭縣', '大雨'), w('10002', '宜蘭縣', '陸上強風'), w('10015', '花蓮縣', '長浪')])).toEqual(
       ['in', ['get', 'COUNTYCODE'], ['literal', ['10002', '10015']]])
   })
 })
@@ -55,7 +67,7 @@ describe('countyRank', () => {
   })
   it('matches each county to its highest rank', () => {
     expect(countyRank([w('10002', '宜蘭縣', '陸上強風'), w('10002', '宜蘭縣', '大雨'), w('10015', '花蓮縣', '豪雨')])).toEqual(
-      ['match', ['get', 'COUNTYCODE'], '10002', 4, '10015', 5, 0])
+      ['match', ['get', 'COUNTYCODE'], '10002', 5, '10015', 6, 0])
   })
 })
 
@@ -88,6 +100,44 @@ describe('groupByKind', () => {
     expect(groups.map(g => g.title)).toEqual(['颱風警報', '大雨特報', '陸上強風特報'])
     expect(groups[1].items.map(i => i.county)).toEqual(['宜蘭縣', '花蓮縣'])
     expect(groups[1].color).toBe(severityOf('大雨').color)
+    expect(groups[1].kind).toBe('大雨特報')
+  })
+
+  const heat = (countyCode: string, county: string, level: string) =>
+    w(countyCode, county, '高溫', { significance: '資訊', level, towns: ['某區'] })
+  const lit = groupByKind([
+    heat('63000', '臺北市', '黃色燈號'),
+    w('10002', '宜蘭縣', '低溫'),
+    heat('67000', '臺南市', '紅色燈號'),
+    heat('65000', '新北市', '橙色燈號'),
+    heat('63000', '臺北市', '橙色燈號'),
+  ])
+  it('splits heat by level, highest light first, and keeps the kind without the level', () => {
+    expect(lit.map(g => g.title)).toEqual(['高溫資訊・紅色燈號', '高溫資訊・橙色燈號', '高溫資訊・黃色燈號', '低溫特報'])
+    expect(lit[1].items.map(i => i.county)).toEqual(['臺北市', '新北市'])
+    expect(lit.slice(0, 3).map(g => g.kind)).toEqual(['高溫資訊', '高溫資訊', '高溫資訊'])
+  })
+})
+
+describe('textsByGroup', () => {
+  const text = (kind: string): WarningText => ({ kind, issued: null, text: kind })
+  it('gives each text to the first group of its kind only', () => {
+    const groups = groupByKind([
+      w('63000', '臺北市', '高溫', { significance: '資訊', level: '黃色燈號' }),
+      w('65000', '新北市', '高溫', { significance: '資訊', level: '橙色燈號' }),
+      w('10002', '宜蘭縣', '大雨'),
+      w('10015', '花蓮縣', '濃霧'),
+    ])
+    const m = textsByGroup(groups, [text('高溫資訊'), text('大雨特報'), text('颱風警報')])
+    expect([...m.keys()]).toEqual(['大雨特報', '高溫資訊・橙色燈號'])
+    expect(m.get('高溫資訊・橙色燈號')!.kind).toBe('高溫資訊')
+  })
+})
+
+describe('textSummary', () => {
+  it('shows when the text was issued', () => {
+    expect(textSummary({ kind: '高溫資訊', issued: '2026-09-27T07:30:00+08:00', text: '' })).toBe('全文 · 9/27 07:30 發布')
+    expect(textSummary({ kind: '大雨特報', issued: null, text: '' })).toBe('全文')
   })
 })
 
@@ -96,6 +146,7 @@ describe('badgeText', () => {
     expect(badgeText([])).toBeNull()
     expect(badgeText(groupByKind([w('10002', '宜蘭縣', '大雨'), w('10015', '花蓮縣', '大雨')]))).toBe('⚠ 大雨特報 · 2 縣市')
     expect(badgeText(groupByKind([w('10002', '宜蘭縣', '大雨'), w('10015', '花蓮縣', '濃霧')]))).toBe('⚠ 2 則特報')
+    expect(badgeText(groupByKind([w('63000', '臺北市', '高溫', { significance: '資訊', level: '黃色燈號' })]))).toBe('⚠ 高溫資訊・黃色燈號 · 1 縣市')
   })
 })
 
