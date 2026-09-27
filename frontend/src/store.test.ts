@@ -24,4 +24,22 @@ describe('setLayer', () => {
     useStore.getState().setLayer('radar')
     expect(useStore.getState()).toMatchObject({ layer: 'radar', playing: false, t: 0, pos: 0, radarPos: 0 })
   })
+
+  it('keeps the forecast time and playback when switching to the typhoon layer', () => {
+    useStore.setState({ layer: 'wind', playing: true, t: 8, pos: 8 })
+    useStore.getState().setLayer('typhoon')
+    expect(useStore.getState()).toMatchObject({ layer: 'typhoon', playing: true, t: 8, pos: 8 })
+  })
+
+  it('returns to now when leaving the typhoon layer for the radar', () => {
+    useStore.setState({ layer: 'typhoon', playing: true, t: 8, pos: 8 })
+    useStore.getState().setLayer('radar')
+    expect(useStore.getState()).toMatchObject({ layer: 'radar', playing: false, t: 0, pos: 0 })
+  })
+
+  it('does not carry the radar replay into the typhoon timeline', () => {
+    useStore.setState({ layer: 'radar', playing: true, radarPos: -5 })
+    useStore.getState().setLayer('typhoon')
+    expect(useStore.getState()).toMatchObject({ layer: 'typhoon', playing: false, radarPos: 0 })
+  })
 })

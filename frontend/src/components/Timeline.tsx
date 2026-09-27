@@ -22,7 +22,7 @@ export default function Timeline() {
   const setPlaying = useStore(s => s.setPlaying)
   const times = useFutureTimes()
   const def = LAYERS[layer]
-  const max = def.future ? times.length : 0
+  const max = def.timeline ? times.length : 0
   const measure = useCallback(measureHeight, [])
 
   // 以 requestAnimationFrame 連續前進；停下時對齊最近的整格，停住時看到的一定是實際預報值
@@ -47,8 +47,8 @@ export default function Timeline() {
     if (times.length > 0 && t > max) setT(0)
   }, [t, max, times.length, setT])
 
-  // 雷達播放過去 3 小時；颱風、行政區等沒有時間可播放，不顯示時間軸；衛星只留雲圖樣式切換
-  if (!def.future) {
+  // 雷達播放過去 3 小時；特報、地震、行政區等沒有時間可播放，不顯示時間軸；衛星只留雲圖樣式切換
+  if (!def.timeline) {
     if (layer === 'radar') return <RadarTimeline />
     return layer === 'satellite' ? <div className="timeline glass compact" ref={measure}><CloudModeToggle /></div> : null
   }
@@ -59,7 +59,8 @@ export default function Timeline() {
   const clock = slot ? slot.slice(11, 16) : fmtClock(new Date().toISOString())
   const main = t === 0 ? '現在' : `${relDay(date, today)} ${clock}`
   const sub = `${fmtMD(date)}（${weekdayOf(date)}）${t === 0 ? ` ${clock}` : ''}`
-  const scale = t > 0 ? def.future.scale : def.now?.scale
+  // 颱風圖層沒有色階，不顯示圖例
+  const scale = t > 0 ? def.future?.scale : def.now?.scale
   const segs = max > 0 ? daySegments(times.slice(0, max), today) : []
   return (
     <div className="timeline glass" ref={measure}>
