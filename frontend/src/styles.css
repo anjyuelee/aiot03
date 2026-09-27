@@ -173,6 +173,9 @@ button:disabled { opacity: 0.4; cursor: default; }
   /* 手機的軸較短，刻度只寫今天／明天，完整日期看右側 */
   .day-label .md { display: none; }
   .card { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 16px 16px 0 0; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
-  /* 颱風卡關不掉，而颱風圖層有時間軸：卡片移到時間軸上方，兩者都看得到 */
-  .card.typhoon-card { left: var(--gap); right: var(--gap); bottom: calc(var(--gap) + var(--timeline-h, 110px) + 8px + env(safe-area-inset-bottom)); max-height: 40%; border-radius: 16px; padding-bottom: 16px; }
+  /* 颱風卡關不掉，而颱風圖層有時間軸：卡片移到時間軸上方，兩者都看得到；右側讓出一欄給底圖按鈕 */
+  .card.typhoon-card { left: var(--gap); right: calc(var(--gap) + 72px); bottom: calc(var(--gap) + var(--timeline-h, 110px) + 8px + env(safe-area-inset-bottom)); max-height: 40%; border-radius: 16px; padding-bottom: 16px; }
+  /* 版權標示移到右上角圖層按鈕下方：地圖容器自成疊放層，展開的說明留在底部會被卡片蓋住；展開的底圖選單疊在卡片之上 */
+  #root:has(.typhoon-card) .maplibregl-ctrl-bottom-right { top: calc(var(--gap) + 64px); bottom: auto; right: var(--gap); }
+  #root:has(.typhoon-card) .basemap-picker { z-index: 5; }
 }
