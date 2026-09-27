@@ -42,4 +42,16 @@ describe('setLayer', () => {
     useStore.getState().setLayer('typhoon')
     expect(useStore.getState()).toMatchObject({ layer: 'typhoon', playing: false, radarPos: 0 })
   })
+
+  it('closes the probe bubble when switching between timeline layers', () => {
+    useStore.setState({ layer: 'temp', probe: { lon: 121.5, lat: 25, town: '6300100' } })
+    useStore.getState().setLayer('wind')
+    expect(useStore.getState().probe).toBeNull()
+  })
+
+  it('closes the probe bubble when switching to a layer without a timeline', () => {
+    useStore.setState({ layer: 'temp', probe: { lon: 121.5, lat: 25, town: '6300100' } })
+    useStore.getState().setLayer('radar')
+    expect(useStore.getState().probe).toBeNull()
+  })
 })
