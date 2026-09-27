@@ -87,6 +87,7 @@ setLayer: layer => set(s => LAYERS[layer].timeline
 ```
 
   `--timeline-h` 由 `Timeline` 量測寫入（同底圖切換鈕的做法）。桌機版不變。
+- 同一個 media query 內加 `.layer-picker.open { z-index: 5; }`：颱風卡頂端變高，在扣掉瀏覽器工具列約 770px 以下的手機上會蓋住展開的圖層選單下半部，而颱風卡關不掉；展開的選單改疊在資訊卡之上。
 
 ## 3. 錯誤處理
 
@@ -107,6 +108,7 @@ setLayer: layer => set(s => LAYERS[layer].timeline
   - 風圖層播到 +24h 切到颱風圖層：同一時刻且繼續播放；切到雷達回到現在
   - `?layer=typhoon&t=8` 開在 +24h
   - 手機寬度（390×844）：颱風卡在時間軸上方，兩者都看得到
+  - 較矮的手機（390×664、375×667）：展開圖層選單時十個按鈕都不被颱風卡蓋住
   - 天氣圖層上看得到細外框潛勢圓
 
 ## 5. `README.md`
