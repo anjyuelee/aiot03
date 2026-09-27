@@ -8,7 +8,8 @@ import { inkOf } from '../lib/basemaps'
 
 const SRC = 'typhoon'
 const POINTS = 'typhoon-points'
-const LAYER_IDS = ['typhoon-cone', 'typhoon-track-past', 'typhoon-track-forecast', POINTS]
+const HIT = 'typhoon-points-hit'
+const LAYER_IDS = ['typhoon-cone', 'typhoon-track-past', 'typhoon-track-forecast', POINTS, HIT]
 const role = (r: string): FilterSpecification => ['==', ['get', 'role'], r]
 
 export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[] }) {
@@ -32,6 +33,9 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 1,
       } }, before)
+    // 透明的點擊範圍：路徑點只有 5px，最新觀測點上方移動的紅點含白框有 8px；透明度 0 仍查得到
+    map.addLayer({ id: HIT, type: 'circle', source: SRC, filter: role('point'),
+      paint: { 'circle-radius': 10, 'circle-opacity': 0 } }, before)
 
     // 每次點擊建新的 popup：沿用同一個時，addTo 期間舊的 closeOnClick 監聽仍會在同一次 click 觸發而立刻關掉它
     let popup: Popup | null = null
@@ -49,14 +53,14 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
     }
     const pointer = () => { map.getCanvas().style.cursor = 'pointer' }
     const unpointer = () => { map.getCanvas().style.cursor = '' }
-    map.on('click', POINTS, onClick)
-    map.on('mouseenter', POINTS, pointer)
-    map.on('mouseleave', POINTS, unpointer)
+    map.on('click', HIT, onClick)
+    map.on('mouseenter', HIT, pointer)
+    map.on('mouseleave', HIT, unpointer)
 
     return () => {
-      map.off('click', POINTS, onClick)
-      map.off('mouseenter', POINTS, pointer)
-      map.off('mouseleave', POINTS, unpointer)
+      map.off('click', HIT, onClick)
+      map.off('mouseenter', HIT, pointer)
+      map.off('mouseleave', HIT, unpointer)
       unpointer()
       popup?.remove()
       for (const id of LAYER_IDS) removeLayerAndSource(map, id)
