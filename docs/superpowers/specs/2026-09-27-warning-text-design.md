@@ -66,6 +66,7 @@ records.record[]
 ```
 
 - 解析時巢狀節點同時接受陣列與單一物件（`hazard`、`location` 可能只有一筆）。
+- 全文只取中文：紀錄的 `datasetLanguage` 有值且不是 `zh-TW` 時略過；`content` 有多筆時取 `contentLanguage` 為 `zh-TW` 者，沒標語言的視為中文；`contentText` 不是字串時當作沒有全文。寧可不顯示全文，也不顯示錯的內容。
 - 時間字串沿用 `toTaipeiIso`，同時接受 `YYYY-MM-DD HH:mm:ss` 與 ISO。
 - fixture：`server/__fixtures__/W-C0033-002.json` 依上述結構手寫，兩則紀錄：
   - A：大雨特報，`hazard` 陣列只有「大雨／特報」一筆。
@@ -105,10 +106,11 @@ export interface WarningText {
 - `parseWarnings`：既有列補 `level: null`、`towns: null`。
 - `parseHeat(json, now: string): Warning[]`：
   - 跳過 `urgency === 'Past'`、`expires` 早於或等於 `now`、`headline` 含「解除」的 `info`。
+  - `records.info`、`info.parameter`、`info.area` 同時接受陣列與單一物件：CWA 的 JSON 會把只有一筆的列表收成單一物件（`eventCode`、`geocode` 即是），高溫資訊只涵蓋一個鄉鎮時若因此丟錯，整批同步都會失敗。
   - 每個 `area` 換算縣市碼（見 2.2），縣市名取 `areaDesc` 前 3 字；7 碼時鄉鎮名為 `areaDesc` 其餘部分，2 或 5 碼時該縣市不列鄉鎮。
   - 依「縣市碼＋燈號」合併為一列：`phenomena = event`、`significance = '資訊'`、`level` 為 `severity_level` 去掉開頭的 `event`（`高溫黃色燈號` → `黃色燈號`，缺值為 `null`）、`towns` 依出現順序（整個縣市時為 `null`）、`start = onset`、`end = expires`。
 - `parseHeatText(json, now: string): WarningText[]`：同樣過濾後，每個 `info` 產生 `{ kind: '高溫資訊', issued: effective, text: description + '\n\n' + instruction }`（缺 `instruction` 時只有 `description`）；多個 `info` 的 `kind` 相同時只留第一個。
-- `parseWarningTexts(json): WarningText[]`：每則紀錄的 `contentText`（去頭尾空白，空字串則略過）對應該紀錄每個 hazard 的 `phenomena + significance`；同一 `kind` 出現在多則紀錄時取 `issueTime` 最新者。
+- `parseWarningTexts(json): WarningText[]`：每則紀錄的中文 `contentText`（見 2.3；去頭尾空白，空字串則略過）對應該紀錄每個 hazard 的 `phenomena + significance`；同一 `kind` 出現在多則紀錄時取 `issueTime` 最新者。
 
 ### 4.2 儲存（`server/db.ts`、`server/repo.ts`）
 
@@ -167,9 +169,9 @@ CREATE TABLE IF NOT EXISTS warning_texts (kind TEXT PRIMARY KEY, issued TEXT, te
 ## 7. 測試
 
 - `server/cwa/parse.test.ts`
-  - `parseHeat`（真實 fixture）：`now` 在過期前 → 7 縣市各一列、`level` 為 `黃色燈號`、臺北市 `towns` 為 4 個區、`6500100` 類直轄市碼 → `65000`、`1000715` 類 → `10007`；`now` 在 `expires` 之後 → `[]`；`urgency: 'Past'` 或標題含「解除」→ `[]`；同一縣市兩種燈號 → 兩列；縣市層級 `geocode`（2／5 碼）→ `towns: null`。
+  - `parseHeat`（真實 fixture）：`now` 在過期前 → 7 縣市各一列、`level` 為 `黃色燈號`、臺北市 `towns` 為 4 個區、`6500100` 類直轄市碼 → `65000`、`1000715` 類 → `10007`；`now` 在 `expires` 之後 → `[]`；`urgency: 'Past'` 或標題含「解除」→ `[]`；同一縣市兩種燈號 → 兩列；縣市層級 `geocode`（2／5 碼）→ `towns: null`；`info`、`parameter`、`area` 為單一物件時照常解析。
   - `parseHeatText`：`description` 空一行接 `instruction`；過期時 `[]`。
-  - `parseWarningTexts`（手寫 fixture）：`kind` 對應、多則紀錄取 `issueTime` 最新者、`hazard` 為單一物件、空 `record` → `[]`。
+  - `parseWarningTexts`（手寫 fixture）：`kind` 對應、多則紀錄取 `issueTime` 最新者、`hazard` 為單一物件、空 `record` → `[]`；多語 `content` 取 zh-TW、只有英文或 `contentText` 不是字串 → 無全文、`datasetLanguage` 非 zh-TW 的紀錄略過。
   - `parseWarnings`：既有列 `level`、`towns` 為 `null`。
 - `server/repo.test.ts`：`level`、`towns` 寫入後讀回一致（含 `null`）；`replaceWarningTexts` 後 `listWarningTexts`。
 - `server/db.test.ts`：建立舊版 `warnings` 表與 `fetch_log` 紀錄後 `openDb` → 表有 `level` 欄、`warnings` 的 `fetch_log` 已刪除、其他 `fetch_log` 保留。
