@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canProbe, dbzOfPixel, formatProbe, obsValueAt, probeAnchor, probePan, radarPixel, townValue } from './probe'
+import { canProbe, dbzOfPixel, formatProbe, obsValueAt, probeAnchor, probeMaxWidth, probePan, radarPixel, townValue } from './probe'
 import { LAYER_IDS } from './layers'
 import { latToMercY, mercYToLat } from './mercator'
 import { sourceRowForMercRow } from './reproject'
@@ -112,12 +112,29 @@ describe('formatProbe', () => {
 
 describe('probeAnchor', () => {
   it('puts the bubble above the point on desktop', () => {
-    expect(probeAnchor(100, 1440, false)).toBe('bottom')
-    expect(probeAnchor(1300, 1440, false)).toBe('bottom')
+    expect(probeAnchor(100, 400, 1440, false)).toBe('bottom')
+    expect(probeAnchor(1300, 91, 1440, false)).toBe('bottom')
+  })
+  it('puts the bubble below a point near the top on desktop', () => {
+    // 縮放到縣市後縣市最北端在 y = 40，上方放不下兩行泡泡
+    expect(probeAnchor(700, 40, 1440, false)).toBe('top')
+    expect(probeAnchor(700, 90, 1440, false)).toBe('top')
   })
   it('puts the bubble beside the point towards the middle on a phone', () => {
-    expect(probeAnchor(100, 390, true)).toBe('left')
-    expect(probeAnchor(300, 390, true)).toBe('right')
+    expect(probeAnchor(100, 40, 390, true)).toBe('left')
+    expect(probeAnchor(300, 400, 390, true)).toBe('right')
+  })
+})
+
+describe('probeMaxWidth', () => {
+  it('fits the phone bubble in the room left on its side of the point', () => {
+    // 扣掉 offset 與尖角 18px、畫面邊距 6px、泡泡內距與邊框 40px
+    expect(probeMaxWidth(100, 390, 'left')).toBe(390 - 100 - 64)
+    expect(probeMaxWidth(300, 390, 'right')).toBe(300 - 64)
+  })
+  it('still leaves room for the longest value at the middle of a 360px phone', () => {
+    // 「降雨機率 100%」以 16px 粗體約 106px
+    expect(probeMaxWidth(180, 360, 'right')).toBeGreaterThanOrEqual(110)
   })
 })
 

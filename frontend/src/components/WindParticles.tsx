@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { Map as MlMap } from 'maplibre-gl'
 import type { Observation } from '../../../shared/types'
 import { buildWindField, sampleField } from '../lib/wind'
@@ -92,5 +93,6 @@ export default function WindParticles({ map, obs }: { map: MlMap; obs: Observati
     }
   }, [map, field, dark])
 
-  return <canvas ref={ref} className="wind-canvas" />
+  // 放進地圖的 canvas 容器：疊在地圖之上、點查泡泡（popup 在容器之後）之下
+  return createPortal(<canvas ref={ref} className="wind-canvas" />, map.getCanvasContainer())
 }

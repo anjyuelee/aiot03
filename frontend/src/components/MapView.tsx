@@ -7,7 +7,7 @@ import { useBoundaries, useTowns } from '../api'
 import { useStore } from '../store'
 import { countyBounds, nearest } from '../lib/geo'
 import { TAIWAN_BOUNDS } from '../lib/heat'
-import { FIT_PADDING, MAIN_ISLAND, TOWN_HIT } from '../map/helpers'
+import { FIT_PADDING, MAIN_ISLAND, TOWN_HIT, countyFitPadding } from '../map/helpers'
 import { PHONE, canProbe, probePan } from '../lib/probe'
 import { BASEMAPS } from '../lib/basemaps'
 import type { Town } from '../../../shared/types'
@@ -60,9 +60,10 @@ export default function MapView({ onReady }: { onReady: (map: MlMap | null) => v
         selectTown(hit.TOWNCODE)
         return hit.TOWNCODE
       }
-      selectCounty(hit.COUNTYCODE)
+      // 先同步畫出麵包屑，countyFitPadding 量到的左上角面板高度才包含它
+      flushSync(() => selectCounty(hit.COUNTYCODE))
       const b = counties.current && countyBounds(counties.current, hit.COUNTYCODE)
-      if (b) map.fitBounds(b, { padding: FIT_PADDING, maxZoom: 11 })
+      if (b) map.fitBounds(b, { padding: countyFitPadding(), maxZoom: 11 })
       return hit.TOWNCODE
     }
     map.on('click', e => {

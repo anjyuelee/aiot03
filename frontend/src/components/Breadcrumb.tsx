@@ -2,7 +2,7 @@ import type { Map as MlMap } from 'maplibre-gl'
 import { useBoundaries, useTowns } from '../api'
 import { useStore } from '../store'
 import { countyBounds, countyOf } from '../lib/geo'
-import { FIT_PADDING, MAIN_ISLAND } from '../map/helpers'
+import { FIT_PADDING, MAIN_ISLAND, countyFitPadding } from '../map/helpers'
 
 /** 逐層選取的所在位置：全台 › 縣市 › 鄉鎮，點前一層可退回 */
 export default function Breadcrumb({ map }: { map: MlMap | null }) {
@@ -23,7 +23,7 @@ export default function Breadcrumb({ map }: { map: MlMap | null }) {
   const toCounty = () => {
     selectCounty(county)
     const b = counties && countyBounds(counties, county)
-    if (b) map?.fitBounds(b, { padding: FIT_PADDING, maxZoom: 11 })
+    if (b) map?.fitBounds(b, { padding: countyFitPadding(), maxZoom: 11 })
   }
 
   return (

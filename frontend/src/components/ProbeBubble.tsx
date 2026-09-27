@@ -4,7 +4,7 @@ import { Popup, type Map as MlMap } from 'maplibre-gl'
 import { useForecastGrid, useFutureTimes, useObservations, useRadar, useTowns } from '../api'
 import { useStore } from '../store'
 import { LAYERS, type LayerId } from '../lib/layers'
-import { PHONE, dbzOfPixel, formatProbe, obsValueAt, probeAnchor, radarPixel, townValue, type FutureField, type NowField, type Probe } from '../lib/probe'
+import { PHONE, dbzOfPixel, formatProbe, obsValueAt, probeAnchor, probeMaxWidth, radarPixel, townValue, type FutureField, type NowField, type Probe } from '../lib/probe'
 import { useRadarFrame } from '../map/useRadarFrame'
 
 const show = (field: NowField | FutureField, v: number | null) => (v == null ? '無資料' : formatProbe(field, v))
@@ -63,13 +63,17 @@ export default function ProbeBubble({ map }: { map: MlMap }) {
   const [el] = useState(() => document.createElement('div'))
 
   // popup 掛在地圖容器、不在 canvas 容器內，點泡泡不會觸發地圖點擊。
-  // 手機泡泡在點的旁邊：地圖移動後（例如點縣市時縮放過去）點換到畫面另一半就換邊，才不會超出畫面
+  // 地圖移動後（例如點縣市時縮放過去）重新決定位置：手機點換到畫面另一半就換邊、寬度限制在那一側剩下的空間，
+  // 桌機點太靠近頂端就改放到點的下方，才不會超出畫面
   useEffect(() => {
     if (!probe) return
     let popup: Popup | null = null
     let anchor: string | null = null
     const place = () => {
-      const next = probeAnchor(map.project([probe.lon, probe.lat]).x, map.getContainer().clientWidth, matchMedia(PHONE).matches)
+      const { x, y } = map.project([probe.lon, probe.lat])
+      const width = map.getContainer().clientWidth
+      const next = probeAnchor(x, y, width, matchMedia(PHONE).matches)
+      el.style.maxWidth = next === 'left' || next === 'right' ? `${probeMaxWidth(x, width, next)}px` : ''
       if (next === anchor) return
       anchor = next
       popup?.remove()

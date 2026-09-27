@@ -1,8 +1,19 @@
 import type { LngLatBoundsLike, Map as MlMap } from 'maplibre-gl'
+import { PHONE, PHONE_BUBBLE_CLEARANCE } from '../lib/probe'
 
 /** 讓台灣本島填滿畫面；底部留給時間軸 */
 export const MAIN_ISLAND: LngLatBoundsLike = [[119.9, 21.85], [122.05, 25.35]]
 export const FIT_PADDING = { top: 40, bottom: 110, left: 40, right: 40 }
+
+/**
+ * 縮放到縣市時的留白：手機左上角的搜尋列、麵包屑與徽章疊在地圖上且整塊攔下點擊，縣市最北端要在它下方，
+ * 點在北端時點查泡泡（以點為垂直中心）才不會被蓋住；量不到時沿用 FIT_PADDING
+ */
+export function countyFitPadding() {
+  const panel = matchMedia(PHONE).matches ? document.querySelector('.top-left') : null
+  if (!panel) return FIT_PADDING
+  return { ...FIT_PADDING, top: Math.max(FIT_PADDING.top, panel.getBoundingClientRect().bottom + PHONE_BUBBLE_CLEARANCE) }
+}
 
 /** 資料圖層放在第一個文字圖層之下，地名標籤才不會被蓋住 */
 export const firstSymbolLayer = (map: MlMap) => map.getLayersOrder().find(id => map.getLayer(id)?.type === 'symbol')

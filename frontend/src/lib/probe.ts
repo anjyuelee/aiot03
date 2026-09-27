@@ -58,12 +58,29 @@ export function formatProbe(field: NowField | FutureField | 'dbz', v: number): s
 /** 與 styles.css 的手機版斷點相同 */
 export const PHONE = '(max-width: 640px)'
 
+/** 桌機兩行泡泡含尖角與 offset，在點上方約佔 75px */
+const DESKTOP_BUBBLE_HEIGHT = 75
+/** 手機泡泡是單行、在點的旁邊、以點為垂直中心，高約 36px */
+const PHONE_BUBBLE_HALF = 18
+const MARGIN = 16
+const PHONE_MARGIN = 8
+/** 手機泡泡的上下緣要與點保持的距離：半高加邊距 */
+export const PHONE_BUBBLE_CLEARANCE = PHONE_BUBBLE_HALF + PHONE_MARGIN
+
 /**
- * 泡泡相對於點的位置（MapLibre popup anchor）：桌機在點的正上方；手機卡片開著時地圖只剩一小條，
- * 改放在點的旁邊、靠畫面中間那一側（點在左半部時 anchor 為 left，泡泡在點的右邊）
+ * 泡泡相對於點的位置（MapLibre popup anchor）：桌機在點的正上方，點太靠近畫面頂端時改到點的下方；
+ * 手機卡片開著時地圖只剩一小條，改放在點的旁邊、靠畫面中間那一側（點在左半部時 anchor 為 left，泡泡在點的右邊）
  */
-export const probeAnchor = (x: number, width: number, phone: boolean) =>
-  !phone ? 'bottom' : x < width / 2 ? 'left' : 'right'
+export const probeAnchor = (x: number, y: number, width: number, phone: boolean) =>
+  !phone ? (y < DESKTOP_BUBBLE_HEIGHT + MARGIN ? 'top' : 'bottom') : x < width / 2 ? 'left' : 'right'
+
+// 手機泡泡在點的旁邊：popup offset 8px ＋尖角 10px、與畫面邊緣留 6px；內容外還有 .probe-popup 的內距 10px＋28px 與邊框 2px
+const PHONE_SIDE_GAP = 8 + 10 + 6
+const BUBBLE_CHROME = 10 + 28 + 2
+
+/** 手機泡泡內容（.probe）的最大寬度：點旁邊那一側剩下的寬度；放不下時來源小字截斷，數值不截 */
+export const probeMaxWidth = (x: number, width: number, anchor: 'left' | 'right') =>
+  (anchor === 'left' ? width - x : x) - PHONE_SIDE_GAP - BUBBLE_CHROME
 
 // 鄉鎮卡片的範圍，對應 styles.css 的 .card：桌機 left: var(--gap)（16px）、width: 340px、top: 150px；手機貼底、max-height: 62%
 const DESKTOP_CARD_RIGHT = 16 + 340
@@ -71,10 +88,6 @@ const DESKTOP_CARD_TOP = 150
 const PHONE_CARD_TOP = 1 - 0.62
 /** 桌機泡泡在點的上方、以點為水平中心，寬約 140px */
 const BUBBLE_HALF = 70
-/** 手機泡泡是單行、在點的旁邊、以點為垂直中心，高約 36px */
-const PHONE_BUBBLE_HALF = 18
-const MARGIN = 16
-const PHONE_MARGIN = 8
 
 /**
  * 點擊位置被鄉鎮卡片蓋住時要 panBy 的位移，panBy 後該點的螢幕位置為 (x − dx, y − dy)；沒蓋住回 [0, 0]。
@@ -83,7 +96,7 @@ const PHONE_MARGIN = 8
 export function probePan(x: number, y: number, height: number, phone: boolean): [number, number] {
   if (phone) {
     // 矮手機加上特報、地震徽章時，徽章與卡片之間只剩約 56px，只移到泡泡下緣剛好在卡片之上
-    const limit = height * PHONE_CARD_TOP - PHONE_BUBBLE_HALF - PHONE_MARGIN
+    const limit = height * PHONE_CARD_TOP - PHONE_BUBBLE_CLEARANCE
     return [0, y > limit ? y - limit : 0]
   }
   // 點在卡片頂端之上時泡泡也在卡片之上

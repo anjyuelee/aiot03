@@ -23,7 +23,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 button:disabled { opacity: 0.4; cursor: default; }
 
 .map { position: fixed; inset: 0; }
-.wind-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+.wind-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
 .glass {
   background: var(--glass);
@@ -148,6 +148,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 /* 點查泡泡：數值大字、來源小字，右上角關閉；保留尖角指出點的位置 */
 .probe-popup .maplibregl-popup-content { background: var(--glass); color: var(--text); border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px 28px 6px 10px; backdrop-filter: blur(12px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
 .probe-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--glass); }
+.probe-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--glass); }
 .probe-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--glass); }
 .probe-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--glass); }
 .probe { display: flex; flex-direction: column; white-space: nowrap; }
@@ -192,6 +193,8 @@ button:disabled { opacity: 0.4; cursor: default; }
   /* 版權標示移到右上角圖層按鈕下方：地圖容器自成疊放層，展開的說明留在底部會被卡片蓋住；展開的底圖選單疊在卡片之上 */
   #root:has(.typhoon-card) .maplibregl-ctrl-bottom-right { top: calc(var(--gap) + 64px); bottom: auto; right: var(--gap); }
   #root:has(.typhoon-card) .basemap-picker { z-index: 5; }
-  /* 卡片開著時地圖只剩一小條：泡泡改單行，放在點的旁邊 */
+  /* 卡片開著時地圖只剩一小條：泡泡改單行，放在點的旁邊；寬度由 ProbeBubble 限制在點旁邊剩下的空間，放不下時來源小字截斷 */
   .probe { flex-direction: row; align-items: baseline; gap: 6px; }
+  .probe strong { font-size: 16px; flex-shrink: 0; }
+  .probe .muted { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 }

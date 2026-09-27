@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import type { Map as MlMap } from 'maplibre-gl'
-import { TOWN_HIT, TYPHOON_FOLLOW_BOTTOM, cardFitPadding, dataLayerBefore, overlayBefore } from './helpers'
+import { FIT_PADDING, TOWN_HIT, TYPHOON_FOLLOW_BOTTOM, cardFitPadding, countyFitPadding, dataLayerBefore, overlayBefore } from './helpers'
 
 // 只模擬插入點會用到的兩個方法；layers 由下往上，firstSymbolLayer 靠 type 找文字圖層
 const fakeMap = (layers: [id: string, type: string][]) => ({
@@ -45,5 +45,27 @@ describe('cardFitPadding', () => {
   it('falls back to 45% of the height without a card', () => {
     phone(null)
     expect(cardFitPadding().bottom).toBe(Math.round(664 * 0.45))
+  })
+})
+
+describe('countyFitPadding', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  // panelBottom 為左上角搜尋列、麵包屑與徽章的下緣，null 表示量不到
+  const stub = (phone: boolean, panelBottom: number | null) => {
+    vi.stubGlobal('matchMedia', () => ({ matches: phone }))
+    vi.stubGlobal('document', { querySelector: () => (panelBottom == null ? null : { getBoundingClientRect: () => ({ bottom: panelBottom }) }) })
+  }
+  it('keeps the usual padding on desktop', () => {
+    stub(false, 200)
+    expect(countyFitPadding()).toEqual(FIT_PADDING)
+  })
+  it('keeps the county and the probe bubble below the phone top panel', () => {
+    // 泡泡以點為垂直中心、半高 18px，再留 8px
+    stub(true, 161)
+    expect(countyFitPadding()).toEqual({ ...FIT_PADDING, top: 161 + 26 })
+  })
+  it('falls back to the usual padding without the panel', () => {
+    stub(true, null)
+    expect(countyFitPadding()).toEqual(FIT_PADDING)
   })
 })
