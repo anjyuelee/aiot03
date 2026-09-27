@@ -108,7 +108,13 @@ button:disabled { opacity: 0.4; cursor: default; }
 .warning-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 16px; }
 .warning-group .dot { flex: none; width: 12px; height: 12px; border-radius: 50%; }
 .warning-group ul { list-style: none; margin: 0; padding: 0; }
-.warning-group li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 13px; }
+.warning-group li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; padding: 4px 0; font-size: 13px; }
+.warning-group .towns { flex-basis: 100%; font-size: 12px; }
+.warning-text summary { display: flex; align-items: center; gap: 8px; padding: 6px 0 2px; font-size: 13px; cursor: pointer; list-style: none; }
+.warning-text summary::-webkit-details-marker { display: none; }
+.warning-text summary::before { content: '▸'; width: 10px; color: var(--muted); }
+.warning-text[open] > summary::before { content: '▾'; }
+.warning-text p { margin: 4px 0 0; font-size: 13px; line-height: 1.7; white-space: pre-line; }
 .quake-detail, .quake-counties, .quake-list { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border); }
 .quake-detail h3, .quake-list h3 { margin: 0 0 4px; font-size: 16px; }
 .quake-detail a { display: inline-block; margin-top: 6px; font-size: 13px; color: var(--accent); text-decoration: none; }

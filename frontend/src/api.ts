@@ -5,6 +5,7 @@ import type { FeatureCollection, Geometry, MultiLineString } from 'geojson'
 import type { Topology } from 'topojson-specification'
 import type {
   ApiResponse, Bounds, Earthquake, ForecastGrid, Observation, RadarFrame, RadarFrames, SatelliteOverlay, Town, TownForecast, Typhoon, Warning,
+  WarningText,
 } from '../../shared/types'
 import { loadImage, satelliteOverlay } from './lib/overlays'
 import { reprojectImage } from './lib/reproject'
@@ -127,6 +128,10 @@ export const useTyphoons = (enabled: boolean) =>
 
 export const useWarnings = () =>
   useQuery({ queryKey: ['warnings'], queryFn: () => get<Warning[]>('/api/warnings'), refetchInterval: TEN_MIN })
+
+// 只有特報卡片會用到全文
+export const useWarningTexts = () =>
+  useQuery({ queryKey: ['warning-texts'], queryFn: () => get<WarningText[]>('/api/warning-texts'), refetchInterval: TEN_MIN })
 
 export const useEarthquakes = () =>
   useQuery({ queryKey: ['earthquakes'], queryFn: () => get<Earthquake[]>('/api/earthquakes'), refetchInterval: FIVE_MIN })
