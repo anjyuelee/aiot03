@@ -68,14 +68,20 @@ export function timeAtPos(pos: number, times: string[], start: number): number {
   return Math.max(start, t)
 }
 
-export interface TyphoonState { lon: number; lat: number; radius15ms: number | null }
+export interface TyphoonState { lon: number; lat: number; radius15ms: number | null; radius70: number | null }
 
-const stateOf = ({ lon, lat, radius15ms }: TyphoonFix): TyphoonState => ({ lon, lat, radius15ms })
+const stateOf = ({ lon, lat, radius15ms, radius70 }: TyphoonFix): TyphoonState => ({ lon, lat, radius15ms, radius70 })
 
-/** 颱風在某時刻的位置與七級風半徑：在最新觀測點與預測點之間線性內插；晚於最後一個預測點時為 null，不外推 */
+/** 半徑只有一端有值時取有值的那端，同 lerpValues */
+const lerpRadius = (a: number | null, b: number | null, f: number) =>
+  a == null ? b : b == null ? a : a + (b - a) * f
+
+/** 颱風在某時刻的位置、七級風與 70% 潛勢半徑：在最新觀測點與預測點之間線性內插；晚於最後一個預測點時為 null，不外推 */
 export function typhoonAt(t: Typhoon, time: number): TyphoonState | null {
-  const now = t.past.at(-1)
-  if (!now) return null
+  const last = t.past.at(-1)
+  if (!last) return null
+  // 觀測點是實測位置，潛勢半徑為 0，往後隨預報時間變大
+  const now = { ...last, radius70: 0 }
   const start = Date.parse(now.time)
   if (time <= start) return stateOf(now)
   // 觀測點可能比預報新；不晚於它的預測點已過時，留著會跳過觀測位置
@@ -88,16 +94,17 @@ export function typhoonAt(t: Typhoon, time: number): TyphoonState | null {
     if (time > tb) continue
     const ta = Date.parse(a.time)
     const f = (time - ta) / (tb - ta)
-    // 半徑只有一端有值時取有值的那端，同 lerpValues
-    const r = a.radius15ms == null ? b.radius15ms
-      : b.radius15ms == null ? a.radius15ms
-      : a.radius15ms + (b.radius15ms - a.radius15ms) * f
-    return { lon: a.lon + (b.lon - a.lon) * f, lat: a.lat + (b.lat - a.lat) * f, radius15ms: r }
+    return {
+      lon: a.lon + (b.lon - a.lon) * f,
+      lat: a.lat + (b.lat - a.lat) * f,
+      radius15ms: lerpRadius(a.radius15ms, b.radius15ms, f),
+      radius70: lerpRadius(a.radius70, b.radius70, f),
+    }
   }
   return null
 }
 
-/** 天氣圖層上跟著時間軸移動的颱風中心（帶名稱）與七級風圈 */
+/** 跟著時間軸移動的颱風中心（帶名稱）、七級風圈與 70% 潛勢圓 */
 export function followGeoJSON(list: Typhoon[], times: string[], pos: number): FeatureCollection {
   const features: Feature[] = []
   for (const t of list) {
@@ -107,6 +114,7 @@ export function followGeoJSON(list: Typhoon[], times: string[], pos: number): Fe
     if (!s) continue
     features.push(feature('center', { type: 'Point', coordinates: [s.lon, s.lat] }, { name: t.name }))
     if (s.radius15ms) features.push(feature('wind', { type: 'Polygon', coordinates: [circlePolygon(s.lon, s.lat, s.radius15ms)] }))
+    if (s.radius70) features.push(feature('cone', { type: 'Polygon', coordinates: [circlePolygon(s.lon, s.lat, s.radius70)] }))
   }
   return { type: 'FeatureCollection', features }
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { circlePolygon, fixLines, followGeoJSON, timeAtPos, toGeoJSON, typhoonAt, typhoonBounds } from './typhoon'
 import { TAIWAN_BOUNDS } from './heat'
-import type { LineString } from 'geojson'
+import type { LineString, Polygon } from 'geojson'
 import type { Typhoon, TyphoonFix } from '../../../shared/types'
 
 const fix = (lon: number, lat: number, extra: Partial<TyphoonFix> = {}): TyphoonFix => ({
@@ -69,7 +69,7 @@ describe('fixLines', () => {
   })
 })
 
-// 最新觀測點 26 日 20:00；預測點 +6h、+12h、+24h，後兩點沒有七級風半徑
+// 最新觀測點 26 日 20:00；預測點 +6h、+12h、+24h，後兩點沒有七級風半徑；70% 半徑依序 30、60 km，最後一點沒有
 const T0 = Date.parse('2026-09-26T20:00:00+08:00')
 const H = 3600_000
 const moving: Typhoon = {
@@ -79,9 +79,9 @@ const moving: Typhoon = {
     fix(128, 22, { time: '2026-09-26T20:00:00+08:00', radius15ms: 100 }),
   ],
   forecast: [
-    fix(127, 23, { time: '2026-09-27T02:00:00+08:00', forecastHour: 6, radius15ms: 80 }),
-    fix(126, 24, { time: '2026-09-27T08:00:00+08:00', forecastHour: 12, radius15ms: null }),
-    fix(125, 25, { time: '2026-09-27T20:00:00+08:00', forecastHour: 24, radius15ms: null }),
+    fix(127, 23, { time: '2026-09-27T02:00:00+08:00', forecastHour: 6, radius15ms: 80, radius70: 30 }),
+    fix(126, 24, { time: '2026-09-27T08:00:00+08:00', forecastHour: 12, radius15ms: null, radius70: 60 }),
+    fix(125, 25, { time: '2026-09-27T20:00:00+08:00', forecastHour: 24, radius15ms: null, radius70: null }),
   ],
 }
 
@@ -124,27 +124,33 @@ describe('timeAtPos', () => {
 
 describe('typhoonAt', () => {
   it('returns the latest fix at or before its time', () => {
-    expect(typhoonAt(moving, T0)).toEqual({ lon: 128, lat: 22, radius15ms: 100 })
-    expect(typhoonAt(moving, T0 - 3 * H)).toEqual({ lon: 128, lat: 22, radius15ms: 100 })
+    expect(typhoonAt(moving, T0)).toEqual({ lon: 128, lat: 22, radius15ms: 100, radius70: 0 })
+    expect(typhoonAt(moving, T0 - 3 * H)).toEqual({ lon: 128, lat: 22, radius15ms: 100, radius70: 0 })
   })
   it('returns a forecast fix exactly at its time', () => {
-    expect(typhoonAt(moving, T0 + 6 * H)).toEqual({ lon: 127, lat: 23, radius15ms: 80 })
-    expect(typhoonAt(moving, T0 + 12 * H)).toEqual({ lon: 126, lat: 24, radius15ms: null })
-    expect(typhoonAt(moving, T0 + 24 * H)).toEqual({ lon: 125, lat: 25, radius15ms: null })
+    expect(typhoonAt(moving, T0 + 6 * H)).toEqual({ lon: 127, lat: 23, radius15ms: 80, radius70: 30 })
+    expect(typhoonAt(moving, T0 + 12 * H)).toEqual({ lon: 126, lat: 24, radius15ms: null, radius70: 60 })
+    expect(typhoonAt(moving, T0 + 24 * H)).toEqual({ lon: 125, lat: 25, radius15ms: null, radius70: null })
   })
   it('interpolates position and radius between fixes', () => {
-    expect(typhoonAt(moving, T0 + 3 * H)).toEqual({ lon: 127.5, lat: 22.5, radius15ms: 90 })
+    expect(typhoonAt(moving, T0 + 3 * H)).toEqual({ lon: 127.5, lat: 22.5, radius15ms: 90, radius70: 15 })
   })
   it('takes the radius from the only end that has one', () => {
-    expect(typhoonAt(moving, T0 + 9 * H)).toEqual({ lon: 126.5, lat: 23.5, radius15ms: 80 })
-    expect(typhoonAt(moving, T0 + 18 * H)).toEqual({ lon: 125.5, lat: 24.5, radius15ms: null })
+    expect(typhoonAt(moving, T0 + 9 * H)).toEqual({ lon: 126.5, lat: 23.5, radius15ms: 80, radius70: 45 })
+    expect(typhoonAt(moving, T0 + 18 * H)).toEqual({ lon: 125.5, lat: 24.5, radius15ms: null, radius70: 60 })
+  })
+  it('grows the 70% radius from zero at the latest fix', () => {
+    expect(typhoonAt(moving, T0)!.radius70).toBe(0)
+    expect(typhoonAt(moving, T0 + 3 * H)!.radius70).toBe(15)
+    expect(typhoonAt(moving, T0 + 6 * H)!.radius70).toBe(30)
+    expect(typhoonAt(moving, T0 + 9 * H)!.radius70).toBe(45)
   })
   it('is null after the last forecast fix', () => {
     expect(typhoonAt(moving, T0 + 25 * H)).toBeNull()
   })
   it('only has a position at the latest fix when there is no forecast', () => {
     const still = { ...moving, forecast: [] }
-    expect(typhoonAt(still, T0)).toEqual({ lon: 128, lat: 22, radius15ms: 100 })
+    expect(typhoonAt(still, T0)).toEqual({ lon: 128, lat: 22, radius15ms: 100, radius70: 0 })
     expect(typhoonAt(still, T0 + H)).toBeNull()
   })
   it('is null without any fix', () => {
@@ -153,7 +159,7 @@ describe('typhoonAt', () => {
   it('ignores forecast points at or before the latest fix', () => {
     // 觀測點比預報新：最新觀測 27 日 03:00，+6h 預測點（02:00）已過時，03:00 → 08:00 之間不能改走舊預測點
     const late = { ...moving, past: [...moving.past, fix(127.5, 22.5, { time: '2026-09-27T03:00:00+08:00', radius15ms: 90 })] }
-    expect(typhoonAt(late, T0 + 9.5 * H)).toEqual({ lon: 126.75, lat: 23.25, radius15ms: 90 })
+    expect(typhoonAt(late, T0 + 9.5 * H)).toEqual({ lon: 126.75, lat: 23.25, radius15ms: 90, radius70: 30 })
   })
 })
 
@@ -171,7 +177,14 @@ describe('followGeoJSON', () => {
   })
   it('skips the wind circle without a radius', () => {
     const { features } = followGeoJSON([moving], ['2026-09-27T08:00:00+08:00'], 1)
-    expect(features.map(f => f.properties!.role)).toEqual(['center'])
+    expect(features.map(f => f.properties!.role)).toEqual(['center', 'cone'])
+  })
+  it('adds a 70% circle once the time is past the latest fix', () => {
+    // 「現在」時半徑為 0，不產生潛勢圓（見第一個測試）；+6h 為 30 km
+    const { features } = followGeoJSON([moving], ['2026-09-27T02:00:00+08:00'], 1)
+    expect(features.map(f => f.properties!.role)).toEqual(['center', 'wind', 'cone'])
+    const ring = (features[2].geometry as Polygon).coordinates[0]
+    for (const p of ring) expect(km([127, 23], p)).toBeCloseTo(30, 0)
   })
   it('skips typhoons without a fix or past their forecast', () => {
     expect(followGeoJSON([{ ...moving, past: [] }], [], 0).features).toEqual([])
