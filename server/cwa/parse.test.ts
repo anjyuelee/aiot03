@@ -229,6 +229,13 @@ describe('parseHeat', () => {
     ])
     expect(rows.find(w => w.countyCode === '10014')).toMatchObject({ county: '臺東縣', level: '橙色燈號', towns: null })
   })
+
+  it('accepts single objects in place of one-item lists', () => {
+    const info = json.records.info[0]
+    const one = { records: { info: { ...info, parameter: info.parameter[1], area: info.area[0] } } }
+    expect(parseHeat(one, BEFORE)).toEqual([expect.objectContaining({ countyCode: '63000', level: '黃色燈號', towns: ['文山區'] })])
+    expect(parseHeatText(one, BEFORE).map(t => t.kind)).toEqual(['高溫資訊'])
+  })
 })
 
 describe('parseHeatText', () => {
@@ -278,6 +285,19 @@ describe('parseWarningTexts', () => {
     }
     expect(parseWarningTexts(one)).toEqual([{ kind: '濃霧特報', issued: '2026-09-25T05:30:00+08:00', text: '濃霧' }])
     expect(parseWarningTexts({ records: { record: [] } })).toEqual([])
+  })
+
+  it('shows only zh-TW text and no text when its shape is unexpected', () => {
+    const rec = (content: unknown, datasetLanguage = 'zh-TW') => ({
+      datasetInfo: { datasetLanguage, issueTime: '2026-09-25 05:30:00' },
+      contents: { content },
+      hazardConditions: { hazards: { hazard: [{ info: { phenomena: '濃霧', significance: '特報' } }] } },
+    })
+    const parse = (...record: unknown[]) => parseWarningTexts({ records: { record } }).map(t => t.text)
+    expect(parse(rec([{ contentLanguage: 'en-US', contentText: 'Dense fog' }, { contentLanguage: 'zh-TW', contentText: '濃霧' }]))).toEqual(['濃霧'])
+    expect(parse(rec({ contentLanguage: 'en-US', contentText: 'Dense fog' }))).toEqual([])
+    expect(parse(rec({ contentLanguage: 'zh-TW', contentText: { value: '濃霧' } }))).toEqual([])
+    expect(parse(rec({ contentText: '濃霧' }, 'en-US'))).toEqual([])
   })
 })
 

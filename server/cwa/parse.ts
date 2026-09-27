@@ -236,9 +236,12 @@ export function townCountyCode(geocode: string): string {
   return geocode.startsWith('6') ? geocode.slice(0, 2).padEnd(5, '0') : geocode.slice(0, 5)
 }
 
+// CWA 的巢狀節點只有一筆時可能不是陣列
+const asList = (x: any): any[] => (x == null ? [] : Array.isArray(x) ? x : [x])
+
 // CAP 資料集沒有新訊息時仍回傳最後一則，過期或解除的訊息都要濾掉
 function activeInfos(json: any, now: string): any[] {
-  return (json.records?.info ?? []).filter((i: any) =>
+  return asList(json.records?.info).filter((i: any) =>
     i.urgency !== 'Past' && !String(i.headline ?? '').includes('解除') && Date.parse(i.expires) > Date.parse(now))
 }
 
@@ -249,9 +252,9 @@ export function parseHeat(json: any, now: string): Warning[] {
   const rows = new Map<string, Warning>()
   for (const info of activeInfos(json, now)) {
     const event: string = info.event ?? '高溫'
-    const severity: string | undefined = info.parameter?.find((p: any) => p.valueName === 'severity_level')?.value
+    const severity: string | undefined = asList(info.parameter).find((p: any) => p.valueName === 'severity_level')?.value
     const level = (severity?.startsWith(event) ? severity.slice(event.length) : severity) || null
-    for (const area of info.area ?? []) {
+    for (const area of asList(info.area)) {
       const code = String(area.geocode?.value ?? '')
       const desc = String(area.areaDesc ?? '')
       if (!code || !desc) continue
@@ -278,14 +281,20 @@ export function parseHeatText(json: any, now: string): WarningText[] {
   return text ? [{ kind: (info.event ?? '高溫') + HEAT_SIGNIFICANCE, issued: toTaipeiIso(info.effective), text }] : []
 }
 
-// CWA 的巢狀節點只有一筆時可能不是陣列
-const asList = (x: any): any[] => (x == null ? [] : Array.isArray(x) ? x : [x])
+// 只取中文：有標語言時取 zh-TW，沒標的視為中文；contentText 不是字串時當作沒有全文，寧可不顯示也不顯示錯的內容
+function zhText(record: any): string {
+  const lang = record.datasetInfo?.datasetLanguage
+  if (lang && lang !== 'zh-TW') return ''
+  const list = asList(record.contents?.content)
+  const content = list.find(c => c?.contentLanguage === 'zh-TW') ?? list.find(c => !c?.contentLanguage)
+  return typeof content?.contentText === 'string' ? content.contentText.trim() : ''
+}
 
 /** W-C0033-002：每則特報的全文對應到它包含的每個種類；同一種類出現在多則時取發布時間最新者 */
 export function parseWarningTexts(json: any): WarningText[] {
   const latest = new Map<string, WarningText>()
   for (const record of asList(json.records?.record)) {
-    const text = String(asList(record.contents?.content)[0]?.contentText ?? '').trim()
+    const text = zhText(record)
     if (!text) continue
     const issued = toTaipeiIso(record.datasetInfo?.issueTime)
     const hazards = record.hazardConditions?.hazards
