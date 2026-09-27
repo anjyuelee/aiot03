@@ -3,6 +3,7 @@ import type { Map as MlMap } from 'maplibre-gl'
 import MapView from './components/MapView'
 import DataLayers from './components/DataLayers'
 import SelectionMarker from './components/SelectionMarker'
+import ProbeBubble from './components/ProbeBubble'
 import Boundaries from './components/Boundaries'
 import Breadcrumb from './components/Breadcrumb'
 import SearchBox from './components/SearchBox'
@@ -27,6 +28,7 @@ export default function App() {
       {map && <DataLayers map={map} />}
       {map && <Boundaries map={map} />}
       {map && <SelectionMarker map={map} />}
+      {map && <ProbeBubble map={map} />}
       <div className="top-left">
         <SearchBox map={map} />
         <Breadcrumb map={map} />
