@@ -107,9 +107,10 @@ export function formatProbe(field: FutureField | NowField | 'dbz', v: number): s
 - 在 `App.tsx` 與 `SelectionMarker` 並列：`{map && <ProbeBubble map={map} />}`。
 - MapLibre `Popup`：`offset: 8`、`closeButton: false`、`closeOnClick: false`、`className: 'probe-popup'`；DOM 內容為元件持有的一個 `div`，以 `createPortal` 放入 React 內容。`probe` 變動時重建 popup（`useEffect` 依 `[map, probe]`，cleanup 移除 popup 與監聽）；時間軸、雷達換格只重繪 portal 內容。
 - 位置：
-  - 桌機：`anchor: 'bottom'`，泡泡在點的正上方。
+  - 桌機：`anchor: 'bottom'`，泡泡在點的正上方；點離畫面頂端不到 91px（兩行泡泡含尖角與 offset 約 75px，再留 16px）時改用 `anchor: 'top'`，泡泡在點的下方。縮放到縣市後縣市最北端在 y = 40，review 實測 1440×900 有 14/21 個縣市的北端泡泡被切掉。
   - 手機（`PHONE`）：泡泡改單行、放在點的旁邊；點在地圖左半部用 `anchor: 'left'`（泡泡在點的右邊），右半部用 `anchor: 'right'`。
-  - 純函式 `probeAnchor(x, width, phone): 'bottom' | 'left' | 'right'` 放在 `lib/probe.ts`。建立 popup 時以 `map.project` 的 x 決定，之後每次 `moveend` 重算，換邊時才重建 popup：第一次點縣市會 `fitBounds` 縮放過去，點常被移到畫面另一半（實測 5 個點有 3 個縮放後泡泡超出畫面）；使用者拖動地圖時也一樣。
+  - 手機泡泡內容（`.probe`）的最大寬度限制在點旁邊那一側剩下的空間：`probeMaxWidth(x, width, anchor) = (left ? width − x : x) − 24 − 40`（offset 8＋尖角 10＋畫面邊距 6；內距 10＋28＋邊框 2），每次決定位置時寫到 portal 的 `div` 上。數值（手機 16px 粗體）不截，來源小字放不下時以刪節號截斷。review 實測雨量預報泡泡（`降雨機率 40% 西屯區預報` 約 216px）在 390 寬畫面中央會超出畫面；最長的數值 `降雨機率 100%` 約 106px，360 寬畫面中央仍放得下。
+  - 純函式 `probeAnchor(x, y, width, phone): 'top' | 'bottom' | 'left' | 'right'` 放在 `lib/probe.ts`。建立 popup 時以 `map.project` 的 x 決定，之後每次 `moveend` 重算，換邊時才重建 popup：第一次點縣市會 `fitBounds` 縮放過去，點常被移到畫面另一半（實測 5 個點有 3 個縮放後泡泡超出畫面）；使用者拖動地圖時也一樣。
   - 理由（2026-09-27 實測）：375×667 加上高溫資訊與地震兩個徽章時，左上角面板下緣（196px）到卡片頂端（253px）只剩約 56px；點上方的兩行泡泡需要約 91px，會被徽章蓋住，✕ 也點不到（左上角面板整塊擋住點擊）。單行泡泡高約 38px，以點為垂直中心放在旁邊就放得下。
 - 桌機內容兩行：
 
@@ -130,7 +131,8 @@ export function formatProbe(field: FutureField | NowField | 'dbz', v: number): s
 
   手機把兩行排成一行：`27°C 附近測站推估 ✕`。
 - ✕ 呼叫 `setProbe(null)`。MapLibre 把 popup 掛在地圖容器（`map.getContainer()`），地圖的點擊監聽綁在 canvas 容器，兩者是兄弟節點，點泡泡不會觸發地圖點擊，不需要 `stopPropagation`；headless 實測點 ✕ 後縣市／鄉鎮選取不變。
-- `frontend/src/styles.css`：`.probe-popup .maplibregl-popup-content` 沿用 `typhoon-popup` 的毛玻璃樣式；尖角保留並依 anchor（bottom／left／right）設成同底色，指出點的位置。數值字級較大（18px、粗體），第二行 11px、`--muted`。手機版 `.probe` 改為橫排。
+- `frontend/src/styles.css`：`.probe-popup .maplibregl-popup-content` 沿用 `typhoon-popup` 的毛玻璃樣式；尖角保留並依 anchor（top／bottom／left／right）設成同底色，指出點的位置。數值字級較大（18px、粗體），第二行 11px、`--muted`。手機版 `.probe` 改為橫排、數值 16px 且不縮、來源小字 `text-overflow: ellipsis`。
+- 風場粒子：原本的 `.wind-canvas` 是 `position: fixed; z-index: 1`，疊在整個地圖（含 popup）之上，粒子會畫過泡泡。`WindParticles` 改以 `createPortal` 放進 `map.getCanvasContainer()`（`position: absolute`），疊在地圖之上、popup 之下。
 
 ## 5. 卡片遮擋與平移
 
@@ -143,7 +145,8 @@ export function probePan(x: number, y: number, height: number, phone: boolean): 
 - 卡片範圍用 CSS 上限估計，不量 DOM（卡片載入中會長高，量到的會偏小）：
   - 手機：卡片頂端 `= height × 0.38`（`max-height: 62%`）。泡泡以點為垂直中心、半高取 18px，下緣要在卡片頂端之上 8px：`上限 = 卡片頂端 − 18 − 8`，`y > 上限` 時 `dy = y − 上限`，`dx = 0`。只移到剛好露出，矮手機上泡泡才不會被推到徽章底下。
   - 桌機：卡片為 `x < 16 + 340 = 356`、`y > 150`。泡泡以點為水平中心、半寬取 70px，整個露出需 `x ≥ 目標 = 356 + 70 + 16 = 442`。`x < 目標` 且 `y > 150` 時 `dx = x − 目標`、`dy = 0`；`y ≤ 150` 時泡泡在卡片頂端之上，不動。
-- 常數集中在 `probe.ts` 並註明對應 `styles.css` 的 `.card` 規則（`--gap` 16px、寬 340px、`top: 150px`；手機 `max-height: 62%`）。
+- 常數集中在 `probe.ts` 並註明對應 `styles.css` 的 `.card` 規則（`--gap` 16px、寬 340px、`top: 150px`；手機 `max-height: 62%`）。手機的 `18 + 8` 匯出為 `PHONE_BUBBLE_CLEARANCE`。
+- 縮放到縣市（`MapView` 第一次點縣市、麵包屑回到縣市）改用 `countyFitPadding()`（`map/helpers.ts`）：桌機同 `FIT_PADDING`；手機上方留白為左上角面板（`.top-left`：搜尋列、麵包屑、徽章，`z-index: 5` 且整塊攔下點擊）下緣＋`PHONE_BUBBLE_CLEARANCE`，至少 40px，量不到面板時同 `FIT_PADDING`。`MapView` 以 `flushSync` 先畫出麵包屑再量，否則從全台點縣市時會少算麵包屑那一列（約 40px）。review 實測 375×667 有 12/19 個點得到的縣市北端，縮放後泡泡落在面板底下、✕ 點不到。
 
 ## 6. 錯誤處理
 
@@ -160,7 +163,9 @@ export function probePan(x: number, y: number, height: number, phone: boolean): 
   - `radarPixel`：西北角為 `[0, 0]`、東南角為 `[width − 1, height − 1]`；範圍外回 `null`；列號與 `sourceRowForMercRow` 對得上（取某輸出列中心緯度換回同一列）
   - `dbzOfPixel`：66 色逐一 `radarColor(d)` → `dbzOfPixel` 還原 `d`；RGB 各偏 1–2 仍還原；alpha 0 回 `null`
   - `formatProbe`：表 3.4 每一列
-  - `probeAnchor`：桌機一律 `bottom`；手機左半部 `left`、右半部 `right`
+  - `probeAnchor`：桌機一般 `bottom`、點離頂端不到 91px 時 `top`；手機左半部 `left`、右半部 `right`
+  - `probeMaxWidth`：手機兩側各一例；360 寬畫面中央仍 ≥ 110px
+- `frontend/src/map/helpers.test.ts`：`countyFitPadding` 桌機同 `FIT_PADDING`；手機為面板下緣＋26；量不到面板時同 `FIT_PADDING`
   - `probePan`：手機點在上方不動、點在下方位移到卡片頂端 − 26；桌機點在卡片右側不動、在卡片上方（`y < 150`）不動、落在卡片內往右移到 442
 - `frontend/src/store.test.ts`：切換圖層清除 `probe`（兩個分支各一）
 - `npm test`、`npm run typecheck`、`vite build` 全過
@@ -176,6 +181,9 @@ export function probePan(x: number, y: number, height: number, phone: boolean): 
   - 桌機（1440×900）：選到鄉鎮時點在卡片下方，地圖右移、泡泡可見
   - 未來時段的數值等於 `/api/forecast-grid?time=` 該鄉鎮的欄位值；雷達 dBZ 等於原始 PNG 該格點顏色在色標中的 index
   - 換底圖後泡泡仍在；行政區圖層的逐層選取不變、沒有泡泡
+  - 手機（390、360 寬）雨量圖層未來時段，點移到畫面中央 ±1、±40px：泡泡在畫面內、數值完整、✕ 點得到
+  - 從全台畫面點每個縣市最北端附近（手機 375×667、390×664、390×844，桌機 1440×900；略過全台畫面上被介面蓋住或在畫面外、使用者點不到的點）：泡泡在畫面內、不被左上角面板蓋住、✕ 點得到
+  - 風圖層：泡泡中心最上層是泡泡本身，不是粒子 canvas
 
 ## 8. `README.md`
 
@@ -183,6 +191,8 @@ export function probePan(x: number, y: number, height: number, phone: boolean): 
 - 不重拍截圖。
 
 ## 9. 不做
+
+（review 延後的項目見分支最後的報告：背景重抓失敗時的 `isError` 優先、popup 預設搶焦點、iPhone SE 級畫面加兩個警示徽章時徽章與卡片之間放不下泡泡。）
 
 - 桌機 hover 即時顯示游標處數值
 - 泡泡顯示目前圖層以外的欄位、風向
