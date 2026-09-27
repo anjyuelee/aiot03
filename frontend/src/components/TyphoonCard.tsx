@@ -5,7 +5,7 @@ export default function TyphoonCard() {
   const q = useTyphoons(true)
   const list = q.data?.data ?? []
   return (
-    <aside className="card glass" aria-label="颱風資訊">
+    <aside className="card glass typhoon-card" aria-label="颱風資訊">
       <header><h2>🌀 熱帶氣旋</h2></header>
       {q.isLoading && <div className="skeleton" />}
       {q.isError && <p>無法載入颱風資料，請稍後再試。</p>}

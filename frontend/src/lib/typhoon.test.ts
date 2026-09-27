@@ -44,13 +44,17 @@ describe('typhoonBounds', () => {
 })
 
 describe('toGeoJSON', () => {
-  it('emits tracks, points, wind circle and forecast cones', () => {
+  it('emits tracks, points and forecast cones', () => {
     const roles = toGeoJSON([ty]).features.map(f => f.properties!.role)
     expect(roles.filter(r => r === 'track-past')).toHaveLength(1)
     expect(roles.filter(r => r === 'track-forecast')).toHaveLength(1)
     expect(roles.filter(r => r === 'point')).toHaveLength(3)
-    expect(roles.filter(r => r === 'wind')).toHaveLength(1)
     expect(roles.filter(r => r === 'cone')).toHaveLength(1)
+  })
+  it('leaves the current position and its gale circle to the timeline', () => {
+    const { features } = toGeoJSON([ty])
+    expect(features.filter(f => f.properties!.role === 'wind')).toEqual([])
+    for (const f of features.filter(f => f.properties!.role === 'point')) expect(f.properties).not.toHaveProperty('current')
   })
   it('starts the forecast track at the current position', () => {
     const f = toGeoJSON([ty]).features.find(f => f.properties!.role === 'track-forecast')!

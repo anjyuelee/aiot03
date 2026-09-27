@@ -2,6 +2,7 @@ import {
   useEarthquakes, useForecastGrid, useFutureTimes, useObservations, useRadar, useRadarFrames, useSatellite, useSatelliteClouds, useTyphoons, useWarnings,
 } from '../api'
 import { useStore } from '../store'
+import { LAYERS } from '../lib/layers'
 import { fmtClock } from '../lib/format'
 
 export default function StatusBadge() {
@@ -22,7 +23,8 @@ export default function StatusBadge() {
   const warnings = useWarnings()
   const quakes = useEarthquakes()
   const times = useFutureTimes()
-  const grid = useForecastGrid(t > 0 ? times[t - 1] ?? null : null)
+  // 颱風圖層有時間軸但顯示的是颱風資料的更新時間，不必抓預報格點
+  const grid = useForecastGrid(LAYERS[layer].future && t > 0 ? times[t - 1] ?? null : null)
 
   const q = isQuake ? quakes : isWarning ? warnings : isTyphoon ? typhoon : isSatellite ? satellite : isRadar ? radar : t > 0 ? grid : obs
   if (q.isError || radarFrames.at(-1)?.isError || clouds.isError) return <div className="badge glass warn">暫時無法取得資料</div>

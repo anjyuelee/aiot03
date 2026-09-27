@@ -8,7 +8,7 @@ import { inkOf } from '../lib/basemaps'
 
 const SRC = 'typhoon'
 const POINTS = 'typhoon-points'
-const LAYER_IDS = ['typhoon-cone', 'typhoon-wind-fill', 'typhoon-wind-line', 'typhoon-track-past', 'typhoon-track-forecast', POINTS]
+const LAYER_IDS = ['typhoon-cone', 'typhoon-track-past', 'typhoon-track-forecast', POINTS]
 const role = (r: string): FilterSpecification => ['==', ['get', 'role'], r]
 
 export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[] }) {
@@ -20,21 +20,18 @@ export default function TyphoonLayer({ map, list }: { map: MlMap; list: Typhoon[
     map.addSource(SRC, { type: 'geojson', data: toGeoJSON(list) })
     map.addLayer({ id: 'typhoon-cone', type: 'line', source: SRC, filter: role('cone'),
       paint: { 'line-color': ink, 'line-opacity': 0.35, 'line-width': 1 } }, before)
-    map.addLayer({ id: 'typhoon-wind-fill', type: 'fill', source: SRC, filter: role('wind'),
-      paint: { 'fill-color': '#fa5252', 'fill-opacity': 0.2 } }, before)
-    map.addLayer({ id: 'typhoon-wind-line', type: 'line', source: SRC, filter: role('wind'),
-      paint: { 'line-color': '#fa5252', 'line-width': 1.5 } }, before)
     map.addLayer({ id: 'typhoon-track-past', type: 'line', source: SRC, filter: role('track-past'),
       paint: { 'line-color': ink, 'line-width': 2 } }, before)
     map.addLayer({ id: 'typhoon-track-forecast', type: 'line', source: SRC, filter: role('track-forecast'),
       paint: { 'line-color': ink, 'line-width': 2, 'line-dasharray': [2, 2] } }, before)
+    // 目前位置、七級風圈與移動的潛勢圓由 TyphoonFollow 依時間軸畫在這些圖層之上
     map.addLayer({ id: POINTS, type: 'circle', source: SRC, filter: role('point'),
       paint: {
-        'circle-radius': ['case', ['get', 'current'], 7, 4],
-        'circle-color': ['case', ['get', 'current'], '#fa5252', ['==', ['get', 'kind'], 'past'], ink, '#0b0e17'],
+        'circle-radius': 4,
+        'circle-color': ['case', ['==', ['get', 'kind'], 'past'], ink, '#0b0e17'],
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': ['case', ['get', 'current'], 2, 1],
-      } })
+        'circle-stroke-width': 1,
+      } }, before)
 
     // 每次點擊建新的 popup：沿用同一個時，addTo 期間舊的 closeOnClick 監聽仍會在同一次 click 觸發而立刻關掉它
     let popup: Popup | null = null

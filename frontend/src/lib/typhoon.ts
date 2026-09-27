@@ -48,11 +48,9 @@ export function toGeoJSON(list: Typhoon[]): FeatureCollection {
     for (const f of t.forecast) {
       if (f.radius70) features.push(feature('cone', { type: 'Polygon', coordinates: [circlePolygon(f.lon, f.lat, f.radius70)] }))
     }
-    if (now?.radius15ms) features.push(feature('wind', { type: 'Polygon', coordinates: [circlePolygon(now.lon, now.lat, now.radius15ms)] }))
-    t.past.forEach((f, i) => features.push(feature('point', { type: 'Point', coordinates: pos(f) },
-      { ti, kind: 'past', i, current: i === t.past.length - 1 })))
-    t.forecast.forEach((f, i) => features.push(feature('point', { type: 'Point', coordinates: pos(f) },
-      { ti, kind: 'forecast', i, current: false })))
+    // 目前位置與七級風圈由 followGeoJSON 依時間軸畫出
+    t.past.forEach((f, i) => features.push(feature('point', { type: 'Point', coordinates: pos(f) }, { ti, kind: 'past', i })))
+    t.forecast.forEach((f, i) => features.push(feature('point', { type: 'Point', coordinates: pos(f) }, { ti, kind: 'forecast', i })))
   })
   return { type: 'FeatureCollection', features }
 }

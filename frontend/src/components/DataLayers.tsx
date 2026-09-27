@@ -34,11 +34,12 @@ export default function DataLayers({ map }: { map: MlMap }) {
   const obs = useObservations()
   usePrefetchGrids(times, playing && !!def.future)
   // 位置落在第 i 格與第 i + 1 格之間；第 0 格是「現在」的觀測熱圖，不是預報
-  const gridA = useForecastGrid(i >= 1 ? times[i - 1] ?? null : null)
-  const gridB = useForecastGrid(f > 0 ? times[i] ?? null : null)
+  // 颱風圖層有時間軸但沒有色階，不必抓預報格點
+  const gridA = useForecastGrid(def.future && i >= 1 ? times[i - 1] ?? null : null)
+  const gridB = useForecastGrid(def.future && f > 0 ? times[i] ?? null : null)
   const satellite = useSatellite(layer === 'satellite')
   const clouds = useSatelliteClouds(layer === 'satellite' ? satellite.data?.data ?? null : null, cloudMode)
-  const typhoon = useTyphoons(layer === 'typhoon' || !!def.future)
+  const typhoon = useTyphoons(!!def.timeline)
   const warnings = useWarnings()
   const quakes = useEarthquakes()
 
@@ -70,7 +71,8 @@ export default function DataLayers({ map }: { map: MlMap }) {
       {layer === 'radar' && <RadarLayer map={map} />}
       {layer === 'wind' && !future && obs.data && <WindParticles map={map} obs={obs.data.data} />}
       {layer === 'typhoon' && typhoon.data && <TyphoonLayer map={map} list={typhoon.data.data} />}
-      {def.future && typhoon.data && typhoon.data.data.length > 0 && <TyphoonFollow map={map} list={typhoon.data.data} times={times} pos={q} />}
+      {def.timeline && typhoon.data && typhoon.data.data.length > 0
+        && <TyphoonFollow map={map} list={typhoon.data.data} times={times} pos={q} tracks={layer !== 'typhoon'} />}
       {layer === 'admin' && <AdminLayer map={map} />}
       {layer === 'warning' && warnings.data && <WarningLayer map={map} list={warnings.data.data} />}
       {layer === 'quake' && quakes.data && <QuakeLayer map={map} list={quakes.data.data} />}
