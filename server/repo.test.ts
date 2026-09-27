@@ -5,7 +5,7 @@ import {
   replaceObservations, listObservations, replaceForecasts, listTowns, getTownForecast,
   listGridTimes, getGrid, upsertImage, getImage, logFetch, getFetchedAt,
   replaceSatelliteTiles, listSatelliteTiles, getSatelliteTile, replaceWarnings, listWarnings, replaceEarthquakes, listEarthquakes,
-  replaceRadarFrames, listRadarFrames,
+  replaceRadarFrames, listRadarFrames, replaceWarningTexts, listWarningTexts,
 } from './repo.js'
 import type { Bounds } from '../shared/types.js'
 import {
@@ -101,10 +101,28 @@ describe('warnings', () => {
     const rows = listWarnings(db)
     expect(rows.map(w => `${w.countyCode} ${w.phenomena}`)).toEqual(['09007 濃霧', '10002 大雨', '10002 陸上強風', '10015 豪雨', '63000 大雨'])
     expect(rows[1]).toEqual({
-      countyCode: '10002', county: '宜蘭縣', phenomena: '大雨', significance: '特報',
+      countyCode: '10002', county: '宜蘭縣', phenomena: '大雨', significance: '特報', level: null, towns: null,
       start: '2026-09-25T05:30:00+08:00', end: '2026-09-25T17:30:00+08:00',
     })
     expect(rows[0].end).toBeNull()
+  })
+
+  it('keeps each level of a county apart and reads towns back', () => {
+    const heat = (level: string, towns: string[] | null) => ({
+      countyCode: '63000', county: '臺北市', phenomena: '高溫', significance: '資訊', level, towns,
+      start: '2026-09-27T08:00:00+08:00', end: '2026-09-27T17:00:00+08:00',
+    })
+    replaceWarnings(db, [heat('黃色燈號', ['文山區', '大安區']), heat('橙色燈號', null)])
+    expect(listWarnings(db).map(w => [w.level, w.towns])).toEqual([['橙色燈號', null], ['黃色燈號', ['文山區', '大安區']]])
+  })
+})
+
+describe('warning texts', () => {
+  it('replaces the whole list and reads it back sorted by kind', () => {
+    const rain = { kind: '大雨特報', issued: '2026-09-25T05:30:00+08:00', text: '大雨' }
+    replaceWarningTexts(db, [{ kind: '濃霧特報', issued: null, text: '濃霧' }])
+    replaceWarningTexts(db, [{ kind: '高溫資訊', issued: '2026-09-27T07:30:00+08:00', text: '高溫' }, rain])
+    expect(listWarningTexts(db)).toEqual([rain, { kind: '高溫資訊', issued: '2026-09-27T07:30:00+08:00', text: '高溫' }])
   })
 })
 

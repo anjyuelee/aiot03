@@ -23,16 +23,26 @@ CREATE TABLE IF NOT EXISTS radar_frames (time TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS satellite_tiles (id TEXT PRIMARY KEY, png BLOB, west REAL, south REAL, east REAL, north REAL);
 CREATE TABLE IF NOT EXISTS typhoons (id TEXT PRIMARY KEY, json TEXT);
 CREATE TABLE IF NOT EXISTS warnings (
-  county_code TEXT, county TEXT, phenomena TEXT, significance TEXT, start_time TEXT, end_time TEXT,
-  PRIMARY KEY (county_code, phenomena, significance));
+  county_code TEXT, county TEXT, phenomena TEXT, significance TEXT, level TEXT NOT NULL DEFAULT '',
+  towns TEXT, start_time TEXT, end_time TEXT,
+  PRIMARY KEY (county_code, phenomena, significance, level));
+CREATE TABLE IF NOT EXISTS warning_texts (kind TEXT PRIMARY KEY, issued TEXT, text TEXT);
 CREATE TABLE IF NOT EXISTS earthquakes (id TEXT PRIMARY KEY, json TEXT);
 CREATE TABLE IF NOT EXISTS fetch_log (dataset TEXT PRIMARY KEY, fetched_at TEXT);
 `
 
 export function openDb(file: string): DB {
   const db = new Database(file)
+  dropOldWarnings(db)
   db.exec(SCHEMA)
   return db
+}
+
+// warnings 只是快取：舊版表沒有 level 欄，CREATE TABLE IF NOT EXISTS 不會補，整張丟掉並清掉抓取紀錄，下次請求重抓
+function dropOldWarnings(db: DB): void {
+  const cols = db.prepare('PRAGMA table_info(warnings)').all() as { name: string }[]
+  if (cols.length === 0 || cols.some(c => c.name === 'level')) return
+  db.exec("DROP TABLE warnings; DELETE FROM fetch_log WHERE dataset = 'warnings'")
 }
 
 let shared: DB | null = null

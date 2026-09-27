@@ -1,6 +1,7 @@
 import type { DB } from './db.js'
 import type {
-  Bounds, Earthquake, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, Warning, WeekSlot,
+  Bounds, Earthquake, ForecastSlot, GridCell, ImageKind, ImageOverlay, Observation, Town, TownForecast, Typhoon, Warning, WarningText,
+  WeekSlot,
 } from '../shared/types.js'
 import type { RainObsRow, Slot3hRow, StationRow, WeatherObsRow, WeekRow } from './cwa/parse.js'
 import type { SatelliteTileRow } from './cwa/kmz.js'
@@ -126,18 +127,32 @@ export function listTyphoons(db: DB): Typhoon[] {
   return (db.prepare('SELECT json FROM typhoons ORDER BY id').all() as { json: string }[]).map(r => JSON.parse(r.json))
 }
 
+// level 以空字串存「無燈號」才能放進主鍵；towns 存 JSON
 export function replaceWarnings(db: DB, list: Warning[]): void {
-  const insert = db.prepare(`INSERT OR REPLACE INTO warnings (county_code, county, phenomena, significance, start_time, end_time)
-    VALUES (@countyCode, @county, @phenomena, @significance, @start, @end)`)
+  const insert = db.prepare(`INSERT OR REPLACE INTO warnings (county_code, county, phenomena, significance, level, towns, start_time, end_time)
+    VALUES (@countyCode, @county, @phenomena, @significance, @level, @towns, @start, @end)`)
   db.transaction(() => {
     db.prepare('DELETE FROM warnings').run()
-    for (const w of list) insert.run(w)
+    for (const w of list) insert.run({ ...w, level: w.level ?? '', towns: w.towns && JSON.stringify(w.towns) })
   })()
 }
 
 export function listWarnings(db: DB): Warning[] {
-  return db.prepare(`SELECT county_code AS countyCode, county, phenomena, significance, start_time AS start, end_time AS "end"
-    FROM warnings ORDER BY county_code, phenomena`).all() as Warning[]
+  const rows = db.prepare(`SELECT county_code AS countyCode, county, phenomena, significance, NULLIF(level, '') AS level, towns,
+    start_time AS start, end_time AS "end" FROM warnings ORDER BY county_code, phenomena, level`).all() as (Omit<Warning, 'towns'> & { towns: string | null })[]
+  return rows.map(r => ({ ...r, towns: r.towns == null ? null : JSON.parse(r.towns) }))
+}
+
+export function replaceWarningTexts(db: DB, list: WarningText[]): void {
+  const insert = db.prepare('INSERT OR REPLACE INTO warning_texts (kind, issued, text) VALUES (@kind, @issued, @text)')
+  db.transaction(() => {
+    db.prepare('DELETE FROM warning_texts').run()
+    for (const t of list) insert.run(t)
+  })()
+}
+
+export function listWarningTexts(db: DB): WarningText[] {
+  return db.prepare('SELECT kind, issued, text FROM warning_texts ORDER BY kind').all() as WarningText[]
 }
 
 // 震度資料為巢狀結構且一律整批讀寫，直接存 JSON；id 皆為 +08:00 ISO，字串序即時間序
