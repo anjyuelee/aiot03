@@ -167,6 +167,8 @@ button:disabled { opacity: 0.4; cursor: default; }
   .top-left { right: 64px; width: auto; }
   .layer-toggle { display: block; }
   .layer-picker:not(.open) .layer-btn { display: none; }
+  /* 展開的選單疊在資訊卡之上：颱風卡關不掉，較矮的手機上會蓋住選單下半部 */
+  .layer-picker.open { z-index: 5; }
   .timeline { bottom: calc(var(--gap) + env(safe-area-inset-bottom)); }
   /* 手機的軸較短，刻度只寫今天／明天，完整日期看右側 */
   .day-label .md { display: none; }
