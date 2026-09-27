@@ -16,6 +16,7 @@
 | 颱風圖層總覽 | 過去／預測路徑、路徑點、固定潛勢圓、點擊 popup、切入時自動縮放皆保留；固定在最新觀測點的七級風圈與紅點改由移動的颱風負責 |
 | 資訊卡 | 照舊顯示最新狀態，不隨時間軸變動 |
 | 沒有颱風 | 颱風圖層照舊顯示時間軸（可拖動，畫面不變） |
+| 手機版面 | 寬度 ≤ 640px 時資訊卡是底部抽屜、疊在時間軸之上；颱風卡關不掉，改為移到時間軸上方（見 §2.9），卡片與時間軸同時可見。地點卡行為不變 |
 
 實測資料（2026-09-27，舒力基）：七級風半徑最新觀測點 110 km、各預測點 100 km；70% 潛勢半徑 +6h 起為 30、40、80、90、100、150、230、360、460 km。會隨時間明顯變大的是潛勢圓。
 
@@ -63,18 +64,29 @@ setLayer: layer => set(s => LAYERS[layer].timeline
 - 移除 `typhoon-wind-fill`、`typhoon-wind-line` 兩層。
 - `typhoon-points`：所有點半徑 4、白框 1；過去點 `ink`、預測點 `#0b0e17`（移除 `current` 的放大紅點）。
 - 固定潛勢圓（`typhoon-cone`：`ink`、1px、透明度 0.35）、路徑、popup、`fitBounds`、`minZoom` 不變。
-- 圖層以 `dataLayerBefore` 插入，颱風群組存在時插在它之下，移動的颱風一定畫在總覽之上。MapLibre 的圖層點擊事件只查該圖層，最新觀測點被紅點蓋住仍可點出 popup。
+- 所有圖層（含原本未指定插入點、疊在最上層的 `typhoon-points`）都以 `dataLayerBefore` 插入，颱風群組存在時插在它之下，移動的颱風一定畫在總覽之上；路徑點不再蓋住移動的紅點。MapLibre 的圖層點擊事件只查該圖層，最新觀測點被紅點蓋住仍可點出 popup。
 
 ### 2.7 `frontend/src/components/DataLayers.tsx`
 
 - `useTyphoons(!!def.timeline)`。
 - `def.timeline` 且有颱風時掛上 `<TyphoonFollow … tracks={layer !== 'typhoon'} />`。
-- `usePrefetchGrids` 仍看 `def.future`：颱風圖層播放時不預抓預報格點。
+- `usePrefetchGrids` 仍看 `def.future`；目前時段的 `gridA`／`gridB` 也改為只在 `def.future` 存在時才帶時段（否則傳 `null`，即時段清單那一筆已快取的查詢）：颱風圖層拖動或播放時不抓預報格點。
 
 ### 2.8 連帶效果
 
 - 特報描邊的透明度本來就依 `pos`（`outlineOpacity`），颱風圖層拖離「現在」時也會淡出，與其他四個圖層一致。
 - 颱風圖層「現在」時與先前的差異：紅點半徑 7 → 6、七級風圈填色透明度 0.2 → 0.15、多了颱風名稱（沿用天氣圖層樣式，同一個颱風在各圖層外觀一致）。
+
+### 2.9 手機版颱風卡（`TyphoonCard.tsx`、`styles.css`）
+
+- `TyphoonCard` 的 `aside` 加上 class `typhoon-card`。
+- `@media (max-width: 640px)` 內：
+
+```css
+.card.typhoon-card { left: var(--gap); right: var(--gap); bottom: calc(var(--gap) + var(--timeline-h, 110px) + 8px + env(safe-area-inset-bottom)); max-height: 40%; border-radius: 16px; padding-bottom: 16px; }
+```
+
+  `--timeline-h` 由 `Timeline` 量測寫入（同底圖切換鈕的做法）。桌機版不變。
 
 ## 3. 錯誤處理
 
@@ -94,13 +106,14 @@ setLayer: layer => set(s => LAYERS[layer].timeline
   - 颱風圖層出現時間軸、無色階圖例；拖動與播放時紅點、七級風圈、潛勢圓移動，潛勢圓變大；固定潛勢圓仍淡；點路徑點（含紅點下的最新觀測點）有 popup；切入時自動縮放
   - 風圖層播到 +24h 切到颱風圖層：同一時刻且繼續播放；切到雷達回到現在
   - `?layer=typhoon&t=8` 開在 +24h
+  - 手機寬度（390×844）：颱風卡在時間軸上方，兩者都看得到
   - 天氣圖層上看得到細外框潛勢圓
 
 ## 5. `README.md`
 
 - 「時間軸」項目：「颱風、行政區等無時間序列的圖層不顯示時間軸」改為「特報、地震、行政區等無時間序列的圖層不顯示時間軸」。
 - 「颱風」項目補一句：颱風圖層也可拖動或播放預報時間軸，70% 潛勢圓隨預報時間變大。
-- 重拍截圖（headless Chrome，正式站或本機）：`typhoon.png`（桌機 1440×900，颱風圖層 +24h）、`typhoon-mobile.png`（390×844、DPR 2，颱風圖層 +24h）、`typhoon-follow.png`（桌機，風圖層 +24h，含潛勢圓）；表格說明文字配合更新。
+- 重拍截圖（headless Chrome，本機）：`typhoon.png`（桌機 1440×900，颱風圖層 `t=16`，約 +48h）、`typhoon-mobile.png`（390×844、DPR 2，颱風圖層 `t=16`）、`typhoon-follow.png`（桌機，風圖層 `t=16`，含潛勢圓）；表格說明文字配合更新。選 +48h 是因為 +24h 時潛勢半徑（約 90 km）還小於七級風半徑（100 km），看不出變大。
 
 ## 6. 不做
 
