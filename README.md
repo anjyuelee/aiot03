@@ -1,6 +1,6 @@
 # 台灣天氣地圖（CWA Open Data）
 
-類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、鄉鎮 72 小時／一週預報、雷達回波（過去 3 小時回放）、衛星雲圖、颱風路徑、天氣特報與地震。
+類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、點地圖任一處查該點數值、鄉鎮 72 小時／一週預報、雷達回波（過去 3 小時回放）、衛星雲圖、颱風路徑、天氣特報與地震。
 
 🌐 **線上網址：<https://aiot03.vercel.app>**
 
@@ -28,6 +28,10 @@
 |---|---|
 | ![行政區](docs/screenshots/admin.png) | ![逐層選取](docs/screenshots/admin-town.png) |
 
+| 地圖點查（點任一處，泡泡顯示該點數值：「現在」為附近測站 IDW 推估，未來時段為鄉鎮預報，雷達為 dBZ） | 地圖點查（手機版：泡泡單行放在點的旁邊） |
+|---|---|
+| ![地圖點查](docs/screenshots/probe.png) | <img src="docs/screenshots/probe-mobile.png" width="260" alt="地圖點查手機版"> |
+
 | 底圖切換（右下角：深色／淺色／街道／衛星／地形；圖為衛星底圖＋雷達） |
 |---|
 | ![底圖切換](docs/screenshots/basemap.png) |
@@ -52,7 +56,7 @@
 - **逐層選取**：在地圖上先點選縣市（框起並縮放過去），在該縣市內再點才選到鄉鎮；以鄉鎮多邊形判定點擊位置，搜尋框下方的麵包屑（`← 全台 › 縣市 › 鄉鎮`）可退回上一層
 - **地圖點查**：溫度、風、雨量、濕度、雷達圖層上點地圖任一處（含海上），泡泡顯示該點的數值：「現在」為附近測站的 IDW 推估（與熱圖同一套內插），未來時段為點到的鄉鎮預報，雷達為目前那一格該點的回波強度（dBZ）；跟著預報與雷達時間軸更新，被鄉鎮卡片蓋住時地圖自動平移讓泡泡露出，手機上泡泡改單行放在點的旁邊
 - **行政區圖層**：只顯示縣市／鄉鎮界線與中文名稱，不疊天氣色階；點選的縣市或鄉鎮整塊填滿藍色，選到鄉鎮時同縣市其他鄉鎮淡淡上色
-- **鄉鎮查詢**：搜尋、定位或逐層點選鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報
+- **鄉鎮查詢**：搜尋、定位或逐層點選鄉鎮，顯示目前天氣、72 小時溫度曲線與一週預報（☂ 為當天最高的 12 小時降雨機率，CWA 只提供前 3 天）
 - **雷達回放**：過去 3 小時、每 10 分鐘一格的雷達回波格點（CWA 歷史 API `O-A0059-001`），server 依 CWA 官方色標畫成 PNG 並長期快取；可播放、拖曳與鍵盤切格，播到「現在」停 1.5 秒再重播，下方附 0–65 dBZ 圖例
 - **雷達／衛星**：經緯度等距影像逐列重投影為 Web Mercator 後疊圖；衛星紅外線雲圖可切換「色調強化」（依雲頂溫度由灰、藍、綠、黃到紅紫上色）或白色半透明雲層
 - **颱風**：活動中熱帶氣旋的過去／預測路徑、七級風暴風圈與 70% 潛勢圓，點路徑點看該時刻數值；切入時自動縮放到台灣與整條路徑；拖曳或播放預報時間軸時，颱風中心、七級風暴風圈與 70% 潛勢圓沿預測路徑移動，潛勢圓隨預報時間變大；溫度、風、雨量、濕度圖層上也會畫出颱風路徑與同樣移動的颱風
@@ -67,10 +71,10 @@
 flowchart LR
   subgraph Browser["瀏覽器（React + Vite SPA）"]
     direction TB
-    UI["UI 元件<br/>SearchBox · Breadcrumb · LayerPicker · Timeline<br/>LocationCard · TyphoonCard · WarningCard · QuakeCard<br/>StatusBadge · WarningBadge · QuakeBadge · Legend"]
+    UI["UI 元件<br/>SearchBox · Breadcrumb · LayerPicker · Timeline<br/>LocationCard · TyphoonCard · WarningCard · QuakeCard · ProbeBubble<br/>StatusBadge · WarningBadge · QuakeBadge · Legend"]
     Store["Zustand store<br/>layer / t / town ⇄ URL"]
     Query["TanStack Query<br/>定期 refetch / 快取"]
-    Render["繪圖 lib<br/>IDW 熱圖 · 風粒子 · 鄉鎮 choropleth<br/>縣市／鄉鎮界線 · 特報著色／描邊 · Mercator 重投影 · 雲層處理"]
+    Render["繪圖 lib<br/>IDW 熱圖 · 風粒子 · 鄉鎮 choropleth<br/>縣市／鄉鎮界線 · 特報著色／描邊 · Mercator 重投影 · 雲層處理<br/>點查（單點 IDW · 雷達色標反查）"]
     Map["MapLibre GL"]
     UI <--> Store
     Store --> Query
@@ -204,9 +208,9 @@ aiot03/
 ├── shared/types.ts       # 前後端共用型別
 ├── shared/radar.ts       # 雷達色標與格點範圍（前後端共用）
 ├── frontend/src/
-│   ├── components/       # MapView、DataLayers、WindParticles、Timeline、LocationCard…
-│   ├── map/              # MapLibre 圖層 hooks（image overlay、choropleth）
-│   ├── lib/              # IDW、色階、Mercator 重投影、雲層、URL 狀態…
+│   ├── components/       # MapView、DataLayers、WindParticles、Timeline、LocationCard、ProbeBubble…
+│   ├── map/              # MapLibre 圖層 hooks（image overlay、choropleth、雷達目前這格）
+│   ├── lib/              # IDW、色階、Mercator 重投影、雲層、點查、URL 狀態…
 │   ├── api.ts            # TanStack Query hooks
 │   └── store.ts          # Zustand 狀態（與 URL 同步）
 ├── scripts/build-db.ts   # 建置種子 DB
