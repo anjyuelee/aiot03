@@ -1,9 +1,9 @@
 # 台灣天氣地圖（CWA Open Data）
 
-- 課程名稱：AIoT 與數據分析（AIoT & Data Analytics, AIoT-DA）
-- 回家作業：CWA 天氣預報網站 using AI Agent
-- 儲存庫網址：https://github.com/anjyuelee/aiot03
-- 🌐 **線上網址：<https://aiot03.vercel.app>**
+- **課程名稱**：AIoT 與數據分析（AIoT & Data Analytics, AIoT-DA）
+- **回家作業**：CWA 天氣預報網站 using AI Agent
+- **儲存庫網址**：https://github.com/anjyuelee/aiot03
+- **線上網址**：<https://aiot03.vercel.app>
 
 類 Windy 的全螢幕互動天氣地圖：即時測站熱圖、風場粒子動畫、點地圖任一處查該點數值、鄉鎮 72 小時／一週預報、雷達回波（過去 3 小時回放）、衛星雲圖、颱風路徑、天氣特報與地震。
 
